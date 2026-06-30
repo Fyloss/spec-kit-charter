@@ -1,0 +1,12 @@
+# Development files
+tests/
+.github/
+.gitignore
+
+# Build artifacts
+__pycache__/
+*.pyc
+dist/
+
+# Documentation source (README stays)
+CONTRIBUTING.md
