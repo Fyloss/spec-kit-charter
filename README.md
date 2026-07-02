@@ -1,4 +1,4 @@
-# Charter — Constitution Composer for Spec Kit
+# Charter: Constitution Composer for Spec Kit
 
 A [Spec Kit](https://github.com/github/spec-kit) extension that enables modular
 composition of project constitutions from shared fragment registries.
@@ -23,6 +23,11 @@ Charter introduces a **registry-based composition model** for constitutions:
 3. **Compose** a final constitution by assembling selected fragments + project-specific rules
 4. **Track changes** — detect when fragments are modified locally vs. updated in the registry
 5. **Support monorepos** — sub-constitutions scope rules to specific packages
+
+
+<p align="center" style="margin-top: 30px">
+  <img src=".github/assets/summary-graph.png" alt="Features summary graph"  width="600">
+</p>
 
 ## Installation
 
