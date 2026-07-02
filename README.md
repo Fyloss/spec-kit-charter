@@ -32,11 +32,11 @@ Charter introduces a **registry-based composition model** for constitutions:
 ## Installation
 
 ```bash
-# From GitHub release
-specify extension add charter --from https://github.com/Fyloss/speckit-charter/archive/refs/tags/v0.1.0.zip
+# From Spec Kit Catalog
+specify extension add charter
 
-# From local directory (for development)
-specify extension add --dev /path/to/speckit-charter
+# From GitHub release
+specify extension add charter --from https://github.com/Fyloss/spec-kit-charter/archive/refs/tags/v0.1.0.zip
 ```
 
 ## Quick Start

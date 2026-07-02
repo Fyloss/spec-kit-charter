@@ -6,9 +6,9 @@ extension:
   version: "0.1.0"
   description: "Compose project constitutions from shared fragment registries"
   author: "sakitA"
-  repository: "https://github.com/sakitA/speckit-charter"
+  repository: "https://github.com/Fyloss/spec-kit-charter"
   license: "MIT"
-  homepage: "https://github.com/sakitA/speckit-charter"
+  homepage: "https://github.com/Fyloss/spec-kit-charter"
 
 requires:
   speckit_version: ">=0.11.9"
