@@ -2,7 +2,7 @@
 # config-write.sh — Write charter config file
 # Usage: config-write.sh <REGISTRY_VALUE> [PROJECT_ROOT]
 #
-# Writes the charter-config.yml with the given registry value.
+# Writes .specify/charter/config.yml with the given registry value.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -10,7 +10,7 @@ REGISTRY_VALUE="${1:?Usage: config-write.sh <REGISTRY_VALUE> [PROJECT_ROOT]}"
 PROJECT_ROOT="${2:-.}"
 source "${SCRIPT_DIR}/charter-common.sh"
 
-ensure_dir "$CHARTER_EXT_DIR"
+ensure_charter_data_dir
 
 # Detect type
 if is_git_url "$REGISTRY_VALUE"; then

@@ -36,12 +36,6 @@ provides:
       file: "commands/speckit.charter.restore.md"
       description: "Restore the constitution to the last saved backup"
 
-  config:
-    - name: "charter-config.yml"
-      template: "config-template.yml"
-      description: "Charter extension configuration"
-      required: false
-
 hooks:
   before_constitution:
     command: "speckit.charter.compose"

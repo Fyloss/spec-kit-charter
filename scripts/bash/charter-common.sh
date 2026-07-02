@@ -7,11 +7,22 @@ set -euo pipefail
 # PROJECT_ROOT must be set by the caller (defaults to current directory)
 PROJECT_ROOT="${PROJECT_ROOT:-.}"
 
+# Extension install directory. The scripts live here, but this directory is
+# managed by `specify extension` and is wiped/reset on install, update, and
+# removal (only *-config.yml files survive). NEVER store persistent data here.
 CHARTER_EXT_DIR="${PROJECT_ROOT}/.specify/extensions/charter"
-CHARTER_CONFIG="${CHARTER_EXT_DIR}/charter-config.yml"
-CHARTER_STATE="${CHARTER_EXT_DIR}/state.yml"
-CHARTER_SNAPSHOTS_DIR="${CHARTER_EXT_DIR}/snapshots"
-CHARTER_BACKUPS_DIR="${CHARTER_EXT_DIR}/backups"
+
+# Persistent data directory. Lives OUTSIDE the extension install dir so it
+# survives `specify extension update|remove` and `specify init --here --force`
+# (Spec Kit only overwrites its own template files, never unknown directories).
+# This directory is meant to be committed to git.
+CHARTER_DATA_DIR="${PROJECT_ROOT}/.specify/charter"
+CHARTER_CONFIG="${CHARTER_DATA_DIR}/config.yml"
+CHARTER_STATE="${CHARTER_DATA_DIR}/state.yml"
+CHARTER_SNAPSHOTS_DIR="${CHARTER_DATA_DIR}/snapshots"
+CHARTER_BACKUPS_DIR="${CHARTER_DATA_DIR}/backups"
+# Disposable cache (gitignored) — cloned git registries, downloads, etc.
+CHARTER_CACHE_DIR="${CHARTER_DATA_DIR}/.cache"
 CONSTITUTION_PATH="${PROJECT_ROOT}/.specify/memory/constitution.md"
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
@@ -35,6 +46,21 @@ info() {
 # Ensure a directory exists
 ensure_dir() {
   mkdir -p "$1"
+}
+
+# Ensure the persistent data directory exists and carries a .gitignore that
+# excludes the disposable cache from version control. Everything else in
+# CHARTER_DATA_DIR (config.yml, state.yml, snapshots/, backups/) is meant to be
+# committed.
+ensure_charter_data_dir() {
+  ensure_dir "$CHARTER_DATA_DIR"
+  local gitignore="${CHARTER_DATA_DIR}/.gitignore"
+  if [[ ! -f "$gitignore" ]]; then
+    cat > "$gitignore" <<'GITIGNORE'
+# Disposable cache (cloned registries, downloads) — do not version.
+.cache/
+GITIGNORE
+  fi
 }
 
 # Check if a value looks like a git URL
@@ -92,7 +118,7 @@ resolve_registry_path() {
   registry_type="$(get_registry_type)"
 
   if [[ "$registry_type" == "git" ]]; then
-    REGISTRY_LOCAL_PATH="${CHARTER_EXT_DIR}/.registry-cache"
+    REGISTRY_LOCAL_PATH="${CHARTER_CACHE_DIR}/registry"
     # Clone or update
     if [[ -d "${REGISTRY_LOCAL_PATH}/.git" ]]; then
       git -C "$REGISTRY_LOCAL_PATH" fetch --quiet origin 2>/dev/null || die "Failed to fetch registry: $registry"

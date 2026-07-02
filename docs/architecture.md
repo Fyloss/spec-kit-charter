@@ -102,14 +102,16 @@ User → /speckit.charter.compose update [name]
 
 ## File Layout
 
-All Charter data lives under `.specify/extensions/charter/`:
+All Charter data lives under `.specify/charter/`:
 
 ```
-.specify/extensions/charter/
-├── charter-config.yml          # Registry location and type
-├── state.yml                   # Selected fragments + local constitution
-├── .registry-cache/            # Cloned git registry (if git-based)
-├── snapshots/                  # Saved fragment versions
+.specify/charter/
+├── config.yml                   # Registry location and type
+├── state.yml                    # Selected fragments + local constitution
+├── .gitignore                   # Excludes .cache/ from version control
+├── .cache/
+│   └── registry/                # Cloned git registry (if git-based)
+├── snapshots/                   # Saved fragment versions
 │   ├── fragment/
 │   │   ├── global/
 │   │   │   ├── compliance.md
@@ -119,30 +121,40 @@ All Charter data lives under `.specify/extensions/charter/`:
 │   │           └── standards.md
 │   └── sub-constitution/
 │       └── package-auth.md
-└── backups/                    # Constitution backups
+└── backups/                     # Constitution backups
     ├── constitution-20260630-143022.md.backup
     └── constitution-20260630-150105.md.backup
 ```
 
-### Why `.specify/extensions/charter/`?
+### Why `.specify/charter/` (and not `.specify/extensions/charter/`)?
 
-This follows Spec Kit's extension convention:
-- **Persists** across extension updates (data is in the project, not the extension source)
+The extension install directory (`.specify/extensions/charter/`) holds only the
+extension's **scripts and commands**. That directory is managed by Spec Kit and
+is wiped/reset on `specify extension update|remove` (only `*-config.yml` files
+survive). Storing persistent data there would lose state, snapshots, and
+backups on every update.
+
+Instead, Charter keeps all persistent data in a separate `.specify/charter/`
+directory:
+- **Persists** across extension updates and removals (Spec Kit never touches it)
+- **Survives** `specify init --here --force` (Spec Kit only overwrites its own
+  template files, never unknown directories)
 - **Per-project** — each project has its own configuration
-- **Discoverable** — follows the standard extension data pattern
-- **Gitignore-friendly** — `.registry-cache/` and `backups/` can be gitignored; `charter-config.yml` and `state.yml` should be committed
+- **Git-versioned** — `config.yml`, `state.yml`, `snapshots/`, and `backups/`
+  are meant to be committed; the disposable `.cache/` is gitignored
 
-### Recommended .gitignore Additions
+### .gitignore
+
+Charter automatically writes `.specify/charter/.gitignore` containing:
 
 ```gitignore
-# Charter extension
-.specify/extensions/charter/.registry-cache/
-.specify/extensions/charter/backups/
-.specify/extensions/charter/snapshots/
+# Disposable cache (cloned registries, downloads) — do not version.
+.cache/
 ```
 
-The config and state files should be version-controlled so team members share
-the same fragment selection.
+Everything else under `.specify/charter/` (config, state, snapshots, backups)
+should be version-controlled so team members share the same fragment selection
+and pinned versions.
 
 ## Registry Resolution
 
@@ -153,7 +165,7 @@ project root).
 
 ### Git Repository
 
-The registry is cloned into `.registry-cache/` with `--depth 1` for efficiency.
+The registry is cloned into `.cache/registry/` with `--depth 1` for efficiency.
 On subsequent fetches:
 
 1. `git fetch origin` to get latest

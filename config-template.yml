@@ -1,5 +1,6 @@
 # Charter Extension Configuration
-# Copy this to charter-config.yml and customize
+# This is a reference template. The live config is stored at
+# .specify/charter/config.yml and is normally created by /speckit.charter.config.
 
 # Registry source — path (relative or absolute) or git URL
 # Examples:

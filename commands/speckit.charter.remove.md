@@ -16,7 +16,7 @@ The argument MUST be the name of a fragment or sub-constitution to remove (e.g.,
 
 ## Prerequisites
 
-1. Charter must be configured — `.specify/extensions/charter/state.yml` must exist
+1. Charter must be configured — `.specify/charter/state.yml` must exist
 2. The named fragment/sub-constitution must exist in the current configuration
 
 ## Steps
@@ -27,7 +27,7 @@ The argument is the name of the fragment or sub-constitution to remove.
 
 ```bash
 PROJECT_ROOT="$(pwd)"
-STATE_FILE="${PROJECT_ROOT}/.specify/extensions/charter/state.yml"
+STATE_FILE="${PROJECT_ROOT}/.specify/charter/state.yml"
 
 if [[ ! -f "$STATE_FILE" ]]; then
   echo "❌ ERROR: No charter configuration found."
@@ -56,12 +56,12 @@ Before removing, verify the fragment is not mandatory:
 
 ```bash
 PROJECT_ROOT="$(pwd)"
-CHARTER_CONFIG="${PROJECT_ROOT}/.specify/extensions/charter/charter-config.yml"
+CHARTER_CONFIG="${PROJECT_ROOT}/.specify/charter/config.yml"
 REGISTRY_VALUE=$(grep "^registry:" "$CHARTER_CONFIG" | sed 's/^registry:[[:space:]]*//' | sed 's/^"\(.*\)"$/\1/')
 
 case "$REGISTRY_VALUE" in
   git@*|https://*.git|http://*.git|https://github.com/*|https://gitlab.com/*|git://*)
-    REGISTRY_PATH="${PROJECT_ROOT}/.specify/extensions/charter/.registry-cache"
+    REGISTRY_PATH="${PROJECT_ROOT}/.specify/charter/.cache/registry"
     ;;
   *)
     if [[ "$REGISTRY_VALUE" == /* ]]; then
@@ -96,13 +96,13 @@ Remove the fragment/sub-constitution from the state file:
 2. Remove the target from the `fragments` or `sub_constitutions` list
 3. Write the updated state back
 
-Write the updated YAML to `.specify/extensions/charter/state.yml`.
+Write the updated YAML to `.specify/charter/state.yml`.
 
 ### Step 4: Remove Snapshot
 
 ```bash
 PROJECT_ROOT="$(pwd)"
-SNAPSHOTS_DIR="${PROJECT_ROOT}/.specify/extensions/charter/snapshots"
+SNAPSHOTS_DIR="${PROJECT_ROOT}/.specify/charter/snapshots"
 TARGET_NAME="<SECTION_NAME>"
 
 # Try fragment snapshot

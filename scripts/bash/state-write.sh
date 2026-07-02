@@ -9,7 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="${1:-.}"
 source "${SCRIPT_DIR}/charter-common.sh"
 
-ensure_dir "$CHARTER_EXT_DIR"
+ensure_charter_data_dir
 
 cat > "$CHARTER_STATE"
 echo "State saved to: $CHARTER_STATE"

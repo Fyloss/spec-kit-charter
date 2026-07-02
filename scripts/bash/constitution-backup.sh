@@ -2,7 +2,7 @@
 # constitution-backup.sh — Create a backup of the current constitution.md
 # Usage: constitution-backup.sh [PROJECT_ROOT]
 #
-# Stores backup in .specify/extensions/charter/backups/
+# Stores backup in .specify/charter/backups/
 # with a timestamped filename.
 set -euo pipefail
 
@@ -15,6 +15,7 @@ if [[ ! -f "$CONSTITUTION_PATH" ]]; then
   exit 0
 fi
 
+ensure_charter_data_dir
 ensure_dir "$CHARTER_BACKUPS_DIR"
 
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"

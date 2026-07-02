@@ -18,7 +18,7 @@ Parse arguments for:
 
 ## Prerequisites
 
-1. Charter must be configured — `.specify/extensions/charter/state.yml` must exist (run `/speckit.charter.config` first)
+1. Charter must be configured — `.specify/charter/state.yml` must exist (run `/speckit.charter.config` first)
 2. Spec Kit must be initialized in the project
 
 ## Steps
@@ -27,7 +27,7 @@ Parse arguments for:
 
 ```bash
 PROJECT_ROOT="$(pwd)"
-STATE_FILE="${PROJECT_ROOT}/.specify/extensions/charter/state.yml"
+STATE_FILE="${PROJECT_ROOT}/.specify/charter/state.yml"
 
 if [[ ! -f "$STATE_FILE" ]]; then
   echo "❌ ERROR: No charter configuration found."
@@ -48,7 +48,7 @@ Before any modification, back up the existing constitution:
 ```bash
 PROJECT_ROOT="$(pwd)"
 CONSTITUTION="${PROJECT_ROOT}/.specify/memory/constitution.md"
-BACKUP_DIR="${PROJECT_ROOT}/.specify/extensions/charter/backups"
+BACKUP_DIR="${PROJECT_ROOT}/.specify/charter/backups"
 
 if [[ -f "$CONSTITUTION" ]]; then
   mkdir -p "$BACKUP_DIR"
@@ -96,8 +96,8 @@ In override mode, compare each fragment section in the current constitution agai
 ```bash
 PROJECT_ROOT="$(pwd)"
 CONSTITUTION="${PROJECT_ROOT}/.specify/memory/constitution.md"
-SNAPSHOTS_DIR="${PROJECT_ROOT}/.specify/extensions/charter/snapshots"
-STATE_FILE="${PROJECT_ROOT}/.specify/extensions/charter/state.yml"
+SNAPSHOTS_DIR="${PROJECT_ROOT}/.specify/charter/snapshots"
+STATE_FILE="${PROJECT_ROOT}/.specify/charter/state.yml"
 
 # Read fragment list from state
 FRAGMENTS=$(sed -n '/^fragments:/,/^[^ ]/p' "$STATE_FILE" | grep -E '^\s*-\s' | sed 's/^\s*-\s*//' | sed 's/^"\(.*\)"$/\1/' | sed "s/^'\(.*\)'$/\1/")
@@ -200,8 +200,8 @@ Determine whether to use registry versions or snapshot versions for each fragmen
 
 ```bash
 PROJECT_ROOT="$(pwd)"
-SNAPSHOTS_DIR="${PROJECT_ROOT}/.specify/extensions/charter/snapshots"
-STATE_FILE="${PROJECT_ROOT}/.specify/extensions/charter/state.yml"
+SNAPSHOTS_DIR="${PROJECT_ROOT}/.specify/charter/snapshots"
+STATE_FILE="${PROJECT_ROOT}/.specify/charter/state.yml"
 
 MISSING=""
 FRAGMENTS=$(sed -n '/^fragments:/,/^[^ ]/p' "$STATE_FILE" | grep -E '^\s*-\s' | sed 's/^\s*-\s*//' | sed 's/^"\(.*\)"$/\1/' | sed "s/^'\(.*\)'$/\1/")
@@ -250,12 +250,12 @@ For UPDATE MODE with a specific fragment name, read ONLY that fragment from the 
 
 ```bash
 PROJECT_ROOT="$(pwd)"
-CHARTER_CONFIG="${PROJECT_ROOT}/.specify/extensions/charter/charter-config.yml"
+CHARTER_CONFIG="${PROJECT_ROOT}/.specify/charter/config.yml"
 REGISTRY_VALUE=$(grep "^registry:" "$CHARTER_CONFIG" | sed 's/^registry:[[:space:]]*//' | sed 's/^"\(.*\)"$/\1/')
 
 case "$REGISTRY_VALUE" in
   git@*|https://*.git|http://*.git|https://github.com/*|https://gitlab.com/*|git://*)
-    REGISTRY_PATH="${PROJECT_ROOT}/.specify/extensions/charter/.registry-cache"
+    REGISTRY_PATH="${PROJECT_ROOT}/.specify/charter/.cache/registry"
     # Refresh registry
     git -C "$REGISTRY_PATH" fetch --quiet origin 2>&1 || true
     git -C "$REGISTRY_PATH" reset --quiet --hard origin/HEAD 2>&1 || true
@@ -299,13 +299,13 @@ For CREATION MODE and UPDATE MODE, save snapshots of all fragments being used:
 
 ```bash
 PROJECT_ROOT="$(pwd)"
-SNAPSHOTS_DIR="${PROJECT_ROOT}/.specify/extensions/charter/snapshots"
-CHARTER_CONFIG="${PROJECT_ROOT}/.specify/extensions/charter/charter-config.yml"
+SNAPSHOTS_DIR="${PROJECT_ROOT}/.specify/charter/snapshots"
+CHARTER_CONFIG="${PROJECT_ROOT}/.specify/charter/config.yml"
 REGISTRY_VALUE=$(grep "^registry:" "$CHARTER_CONFIG" | sed 's/^registry:[[:space:]]*//' | sed 's/^"\(.*\)"$/\1/')
 
 case "$REGISTRY_VALUE" in
   git@*|https://*.git|http://*.git|https://github.com/*|https://gitlab.com/*|git://*)
-    REGISTRY_PATH="${PROJECT_ROOT}/.specify/extensions/charter/.registry-cache"
+    REGISTRY_PATH="${PROJECT_ROOT}/.specify/charter/.cache/registry"
     ;;
   *)
     if [[ "$REGISTRY_VALUE" == /* ]]; then
@@ -388,7 +388,7 @@ After `/speckit.constitution` completes, validate the generated constitution:
 ```bash
 PROJECT_ROOT="$(pwd)"
 CONSTITUTION="${PROJECT_ROOT}/.specify/memory/constitution.md"
-STATE_FILE="${PROJECT_ROOT}/.specify/extensions/charter/state.yml"
+STATE_FILE="${PROJECT_ROOT}/.specify/charter/state.yml"
 
 if [[ ! -f "$CONSTITUTION" ]]; then
   echo "❌ VALIDATION FAILED: constitution.md was not created"
@@ -449,8 +449,8 @@ For UPDATE MODE with a single fragment, also confirm:
 
 ## Notes
 
-- Backups are stored in `.specify/extensions/charter/backups/` with timestamps
-- Snapshots are stored in `.specify/extensions/charter/snapshots/` organized by type
+- Backups are stored in `.specify/charter/backups/` with timestamps
+- Snapshots are stored in `.specify/charter/snapshots/` organized by type
 - The local constitution content in the state file is updated each time compose runs in override mode
 - Section markers (`<!-- [NAME] SECTION -->`) are the backbone of the update mechanism — never remove them manually
 - The `/speckit.constitution` command adds its own metadata (Sync Impact Report, version line) — this is expected and should not be confused with charter sections

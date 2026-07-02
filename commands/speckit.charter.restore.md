@@ -16,8 +16,8 @@ No arguments required. The most recent backup is used by default.
 
 ## Prerequisites
 
-1. Charter must be configured — `.specify/extensions/charter/` directory must exist
-2. At least one backup must exist in `.specify/extensions/charter/backups/`
+1. Charter must be configured — `.specify/charter/` directory must exist
+2. At least one backup must exist in `.specify/charter/backups/`
 
 ## Steps
 
@@ -25,7 +25,7 @@ No arguments required. The most recent backup is used by default.
 
 ```bash
 PROJECT_ROOT="$(pwd)"
-BACKUP_DIR="${PROJECT_ROOT}/.specify/extensions/charter/backups"
+BACKUP_DIR="${PROJECT_ROOT}/.specify/charter/backups"
 
 if [[ ! -d "$BACKUP_DIR" ]]; then
   echo "❌ ERROR: No backup directory found."
@@ -64,7 +64,7 @@ Display information about the latest backup and the current constitution:
 ```bash
 PROJECT_ROOT="$(pwd)"
 CONSTITUTION="${PROJECT_ROOT}/.specify/memory/constitution.md"
-BACKUP_DIR="${PROJECT_ROOT}/.specify/extensions/charter/backups"
+BACKUP_DIR="${PROJECT_ROOT}/.specify/charter/backups"
 LATEST=$(find "$BACKUP_DIR" -name '*.md.backup' -type f | sort -r | head -1)
 
 echo "=== LATEST BACKUP ==="
@@ -108,7 +108,7 @@ Proceed with restoration? (yes/no)
 ```bash
 PROJECT_ROOT="$(pwd)"
 CONSTITUTION="${PROJECT_ROOT}/.specify/memory/constitution.md"
-BACKUP_DIR="${PROJECT_ROOT}/.specify/extensions/charter/backups"
+BACKUP_DIR="${PROJECT_ROOT}/.specify/charter/backups"
 LATEST=$(find "$BACKUP_DIR" -name '*.md.backup' -type f | sort -r | head -1)
 
 # Create a safety backup of the CURRENT constitution before overwriting
@@ -131,7 +131,7 @@ echo "✅ Constitution restored from: $(basename "$LATEST")"
 Restored from: <BACKUP_FILENAME>
 Constitution size: <SIZE> bytes
 
-Note: The state file (.specify/extensions/charter/state.yml) has NOT been modified.
+Note: The state file (.specify/charter/state.yml) has NOT been modified.
       If you want to recompose from current state, run /speckit.charter.compose
       If you want to reconfigure fragments, run /speckit.charter.config
 ```

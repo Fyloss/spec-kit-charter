@@ -16,7 +16,7 @@ The argument MAY be the name of a fragment or sub-constitution to add (e.g., `gl
 
 ## Prerequisites
 
-1. Charter must be configured — `.specify/extensions/charter/state.yml` must exist (run `/speckit.charter.config` first)
+1. Charter must be configured — `.specify/charter/state.yml` must exist (run `/speckit.charter.config` first)
 2. The registry must be accessible
 
 ## Steps
@@ -25,7 +25,7 @@ The argument MAY be the name of a fragment or sub-constitution to add (e.g., `gl
 
 ```bash
 PROJECT_ROOT="$(pwd)"
-STATE_FILE="${PROJECT_ROOT}/.specify/extensions/charter/state.yml"
+STATE_FILE="${PROJECT_ROOT}/.specify/charter/state.yml"
 
 if [[ ! -f "$STATE_FILE" ]]; then
   echo "❌ ERROR: No charter configuration found."
@@ -43,13 +43,13 @@ If the state file doesn't exist, display the error and stop.
 
 ```bash
 PROJECT_ROOT="$(pwd)"
-CHARTER_CONFIG="${PROJECT_ROOT}/.specify/extensions/charter/charter-config.yml"
-STATE_FILE="${PROJECT_ROOT}/.specify/extensions/charter/state.yml"
+CHARTER_CONFIG="${PROJECT_ROOT}/.specify/charter/config.yml"
+STATE_FILE="${PROJECT_ROOT}/.specify/charter/state.yml"
 REGISTRY_VALUE=$(grep "^registry:" "$CHARTER_CONFIG" | sed 's/^registry:[[:space:]]*//' | sed 's/^"\(.*\)"$/\1/')
 
 case "$REGISTRY_VALUE" in
   git@*|https://*.git|http://*.git|https://github.com/*|https://gitlab.com/*|git://*)
-    REGISTRY_PATH="${PROJECT_ROOT}/.specify/extensions/charter/.registry-cache"
+    REGISTRY_PATH="${PROJECT_ROOT}/.specify/charter/.cache/registry"
     # Refresh registry
     git -C "$REGISTRY_PATH" fetch --quiet origin 2>&1 || true
     git -C "$REGISTRY_PATH" reset --quiet --hard origin/HEAD 2>&1 || true
@@ -199,7 +199,7 @@ Add the new fragment/sub-constitution to the state file at the determined positi
 2. Insert the new item at the correct position in the appropriate list (`fragments` or `sub_constitutions`)
 3. Write the updated state back
 
-Write the updated YAML to `.specify/extensions/charter/state.yml`.
+Write the updated YAML to `.specify/charter/state.yml`.
 
 ### Step 7: Fetch and Save Snapshot
 
@@ -207,13 +207,13 @@ Fetch the fragment content from the registry and save a snapshot:
 
 ```bash
 PROJECT_ROOT="$(pwd)"
-CHARTER_CONFIG="${PROJECT_ROOT}/.specify/extensions/charter/charter-config.yml"
-SNAPSHOTS_DIR="${PROJECT_ROOT}/.specify/extensions/charter/snapshots"
+CHARTER_CONFIG="${PROJECT_ROOT}/.specify/charter/config.yml"
+SNAPSHOTS_DIR="${PROJECT_ROOT}/.specify/charter/snapshots"
 REGISTRY_VALUE=$(grep "^registry:" "$CHARTER_CONFIG" | sed 's/^registry:[[:space:]]*//' | sed 's/^"\(.*\)"$/\1/')
 
 case "$REGISTRY_VALUE" in
   git@*|https://*.git|http://*.git|https://github.com/*|https://gitlab.com/*|git://*)
-    REGISTRY_PATH="${PROJECT_ROOT}/.specify/extensions/charter/.registry-cache"
+    REGISTRY_PATH="${PROJECT_ROOT}/.specify/charter/.cache/registry"
     ;;
   *)
     if [[ "$REGISTRY_VALUE" == /* ]]; then

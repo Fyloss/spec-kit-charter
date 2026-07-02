@@ -46,8 +46,8 @@ Multiple formats accepted for selecting items:
 ### Output
 
 Saves configuration to:
-- `.specify/extensions/charter/charter-config.yml` — registry location
-- `.specify/extensions/charter/state.yml` — selected fragments and local constitution
+- `.specify/charter/config.yml` — registry location
+- `.specify/charter/state.yml` — selected fragments and local constitution
 
 ---
 
@@ -120,7 +120,7 @@ WHEN WORKING ON sub_const_1, FOLLOW THESE INSTRUCTIONS:
 ### Backup
 
 A backup is created before every compose operation:
-- Location: `.specify/extensions/charter/backups/`
+- Location: `.specify/charter/backups/`
 - Format: `constitution-YYYYMMDD-HHMMSS.md.backup`
 
 ### Validation

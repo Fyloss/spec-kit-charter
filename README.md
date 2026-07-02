@@ -178,13 +178,17 @@ within that package's context.
 
 ## Storage Locations
 
+Charter stores all persistent data under `.specify/charter/` — a dedicated
+directory that lives **outside** the extension install dir so it survives
+`specify extension update`/`remove` and project re-inits. Commit it to git.
+
 | Data | Location | Purpose |
 |------|----------|---------|
-| Config | `.specify/extensions/charter/charter-config.yml` | Registry path and type |
-| State | `.specify/extensions/charter/state.yml` | Selected fragments and local constitution |
-| Snapshots | `.specify/extensions/charter/snapshots/` | Saved fragment versions for change detection |
-| Backups | `.specify/extensions/charter/backups/` | Constitution backups before recomposition |
-| Registry cache | `.specify/extensions/charter/.registry-cache/` | Cloned git registry |
+| Config | `.specify/charter/config.yml` | Registry path and type |
+| State | `.specify/charter/state.yml` | Selected fragments and local constitution |
+| Snapshots | `.specify/charter/snapshots/` | Saved fragment versions for change detection |
+| Backups | `.specify/charter/backups/` | Constitution backups before recomposition |
+| Registry cache | `.specify/charter/.cache/registry/` | Cloned git registry (gitignored) |
 
 ## Documentation
 

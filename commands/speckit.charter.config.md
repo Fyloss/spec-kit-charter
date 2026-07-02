@@ -27,7 +27,7 @@ The registry is the source of constitution fragments. It can be a local director
 
 ```bash
 PROJECT_ROOT="$(pwd)"
-CHARTER_CONFIG="${PROJECT_ROOT}/.specify/extensions/charter/charter-config.yml"
+CHARTER_CONFIG="${PROJECT_ROOT}/.specify/charter/config.yml"
 if [[ -f "$CHARTER_CONFIG" ]]; then
   echo "EXISTING_CONFIG=true"
   grep "^registry:" "$CHARTER_CONFIG" | head -1
@@ -64,14 +64,14 @@ export PROJECT_ROOT
 source .specify/extensions/charter/scripts/bash/charter-common.sh 2>/dev/null || true
 
 # Resolve registry path
-CHARTER_CONFIG="${PROJECT_ROOT}/.specify/extensions/charter/charter-config.yml"
+CHARTER_CONFIG="${PROJECT_ROOT}/.specify/charter/config.yml"
 REGISTRY_VALUE=$(grep "^registry:" "$CHARTER_CONFIG" | sed 's/^registry:[[:space:]]*//' | sed 's/^"\(.*\)"$/\1/')
 
 # Check if git URL
 case "$REGISTRY_VALUE" in
   git@*|https://*.git|http://*.git|https://github.com/*|https://gitlab.com/*|git://*)
     REGISTRY_TYPE="git"
-    CACHE_DIR="${PROJECT_ROOT}/.specify/extensions/charter/.registry-cache"
+    CACHE_DIR="${PROJECT_ROOT}/.specify/charter/.cache/registry"
     if [[ -d "${CACHE_DIR}/.git" ]]; then
       git -C "$CACHE_DIR" fetch --quiet origin 2>&1
       git -C "$CACHE_DIR" reset --quiet --hard origin/HEAD 2>&1
@@ -117,13 +117,13 @@ Read the manifest and enumerate all available fragments, sub-constitutions, and 
 
 ```bash
 PROJECT_ROOT="$(pwd)"
-CHARTER_CONFIG="${PROJECT_ROOT}/.specify/extensions/charter/charter-config.yml"
+CHARTER_CONFIG="${PROJECT_ROOT}/.specify/charter/config.yml"
 REGISTRY_VALUE=$(grep "^registry:" "$CHARTER_CONFIG" | sed 's/^registry:[[:space:]]*//' | sed 's/^"\(.*\)"$/\1/')
 
 # Resolve registry path (same logic as Step 2)
 case "$REGISTRY_VALUE" in
   git@*|https://*.git|http://*.git|https://github.com/*|https://gitlab.com/*|git://*)
-    REGISTRY_PATH="${PROJECT_ROOT}/.specify/extensions/charter/.registry-cache"
+    REGISTRY_PATH="${PROJECT_ROOT}/.specify/charter/.cache/registry"
     ;;
   *)
     if [[ "$REGISTRY_VALUE" == /* ]]; then
@@ -245,12 +245,12 @@ Present the final composition for validation:
 ```bash
 # Calculate total size of all selected content
 PROJECT_ROOT="$(pwd)"
-CHARTER_CONFIG="${PROJECT_ROOT}/.specify/extensions/charter/charter-config.yml"
+CHARTER_CONFIG="${PROJECT_ROOT}/.specify/charter/config.yml"
 REGISTRY_VALUE=$(grep "^registry:" "$CHARTER_CONFIG" | sed 's/^registry:[[:space:]]*//' | sed 's/^"\(.*\)"$/\1/')
 
 case "$REGISTRY_VALUE" in
   git@*|https://*.git|http://*.git|https://github.com/*|https://gitlab.com/*|git://*)
-    REGISTRY_PATH="${PROJECT_ROOT}/.specify/extensions/charter/.registry-cache"
+    REGISTRY_PATH="${PROJECT_ROOT}/.specify/charter/.cache/registry"
     ;;
   *)
     if [[ "$REGISTRY_VALUE" == /* ]]; then
@@ -316,7 +316,7 @@ Do you confirm this composition? (yes/no/cancel)
 
 On user confirmation, save the composition state to the charter state file.
 
-Write the state as YAML to `.specify/extensions/charter/state.yml`:
+Write the state as YAML to `.specify/charter/state.yml`:
 
 ```yaml
 # Charter composition state
@@ -364,8 +364,8 @@ fi
 Write this state file using:
 
 ```bash
-mkdir -p "${PROJECT_ROOT}/.specify/extensions/charter"
-cat > "${PROJECT_ROOT}/.specify/extensions/charter/state.yml" << 'STATEEOF'
+mkdir -p "${PROJECT_ROOT}/.specify/charter"
+cat > "${PROJECT_ROOT}/.specify/charter/state.yml" << 'STATEEOF'
 <GENERATED_YAML_CONTENT>
 STATEEOF
 ```
@@ -386,5 +386,5 @@ After saving the state, display:
 - The registry can be changed at any time by re-running `/speckit.charter.config`.
 - Fragment names correspond to their file paths within the registry's `fragments/` directory, without the `.md` extension (e.g., `languages/typescript/standards`).
 - Sub-constitution names correspond to their file paths within the registry's `sub-constitutions/` directory, without the `.md` extension.
-- Git registries are cloned/fetched into `.specify/extensions/charter/.registry-cache/` and use the default branch.
+- Git registries are cloned/fetched into `.specify/charter/.cache/registry/` and use the default branch.
 - Git authentication uses the local system credentials (SSH keys, credential helpers) — no additional authentication is required.

@@ -1,6 +1,0 @@
-version: 1
-name: "My Organization Charter Registry"
-mandatory_fragments:
-  - "global/compliance"
-recommended_fragments:
-  - "global/code-quality"

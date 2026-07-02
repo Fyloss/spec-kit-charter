@@ -47,13 +47,13 @@ setup() {
 
   # Create a mock project structure
   mkdir -p "${TMP_DIR}/project/.specify/memory"
-  mkdir -p "${TMP_DIR}/project/.specify/extensions/charter"
+  mkdir -p "${TMP_DIR}/project/.specify/charter"
 
   # Copy sample registry as .charter
   cp -r "${FIXTURES_DIR}/sample-registry" "${TMP_DIR}/project/.charter"
 
   # Write a config
-  cat > "${TMP_DIR}/project/.specify/extensions/charter/charter-config.yml" <<EOF
+  cat > "${TMP_DIR}/project/.specify/charter/config.yml" <<EOF
 registry: ".charter"
 registry_type: "directory"
 EOF
@@ -321,10 +321,16 @@ test_config_write_directory() {
     fail "config-write: detects directory type" "output: $output"
   fi
 
-  if [[ -f "${TMP_DIR}/project/.specify/extensions/charter/charter-config.yml" ]]; then
+  if [[ -f "${TMP_DIR}/project/.specify/charter/config.yml" ]]; then
     pass "config-write: creates config file"
   else
     fail "config-write: creates config file"
+  fi
+
+  if grep -q "^.cache/$" "${TMP_DIR}/project/.specify/charter/.gitignore" 2>/dev/null; then
+    pass "config-write: creates .gitignore excluding .cache/"
+  else
+    fail "config-write: creates .gitignore excluding .cache/"
   fi
 }
 
@@ -444,7 +450,7 @@ test_backup() {
   fi
 
   local backup_count
-  backup_count=$(find "${TMP_DIR}/project/.specify/extensions/charter/backups" -name "*.backup" 2>/dev/null | wc -l)
+  backup_count=$(find "${TMP_DIR}/project/.specify/charter/backups" -name "*.backup" 2>/dev/null | wc -l)
   if [[ "$backup_count" -ge 1 ]]; then
     pass "constitution-backup: backup file exists"
   else
