@@ -181,14 +181,6 @@ SUB-CONSTITUTION <sub_constitution_name_1>
 
 **Do NOT ask for yes/no/cancel confirmation.**
 
-The charter is now configured. Inform the user that they can undo the upcoming
-change if needed:
-
-```
-ℹ️  If the generated constitution is not valid, you can restore the previous
-    constitution by running /speckit.charter.restore
-```
-
 Then continue to **Step 2** to perform the composition. Do not display the
 "settings saved / run /speckit.charter.compose" message from the standalone
 config command — composition proceeds immediately in this combined flow.
@@ -400,6 +392,9 @@ If validation passes:
 
 ```
 ✅ Composed constitution successfully generated and compliant with configuration.
+
+ℹ️  If the generated constitution is not valid, you can restore the previous
+    constitution by running /speckit.charter.restore
 ```
 
 If validation has warnings, display them and suggest running the compose command again.
