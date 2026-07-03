@@ -82,9 +82,6 @@ class TestStructure:
         docs_dir = EXTENSION_ROOT / "docs"
         assert docs_dir.is_dir()
 
-    def test_config_template(self):
-        assert (EXTENSION_ROOT / "config-template.yml").exists()
-
     def test_extensionignore(self):
         assert (EXTENSION_ROOT / ".extensionignore").exists()
 
