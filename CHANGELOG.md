@@ -7,7 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `/speckit.charter.compose` now runs an inline configuration flow when no
+  charter configuration exists yet (`.specify/charter/state.yml` missing).
+  Instead of erroring out, it prompts for the registry value and the fragment
+  selection, displays the composition summary without asking for confirmation,
+  reminds the user that `/speckit.charter.restore` can undo the change, and
+  proceeds automatically to generate the constitution — letting users configure
+  and compose in a single step.
+
 ### Changed
+
+- `/speckit.charter.config` no longer asks for a yes/no/cancel confirmation
+  after the composition summary. It now only requests the registry value and the
+  fragment selection; the summary is shown for information and the configuration
+  is saved automatically.
+- `/speckit.charter.config` now reminds the user that `/speckit.charter.restore`
+  can restore the previous constitution if the generated one is not valid.
 
 - **BREAKING:** Charter now stores all persistent data under `.specify/charter/`
   instead of `.specify/extensions/charter/`. The extension install directory is

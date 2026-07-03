@@ -95,6 +95,29 @@ This command will:
 - Invoke `/speckit.constitution` to generate the final file
 - Validate the output
 
+### Express Mode — Configure and Compose in One Step
+
+You can skip step 2 entirely. If no configuration exists yet, running
+`/speckit.charter.compose` directly will perform the configuration inline:
+
+```
+/speckit.charter.compose
+```
+
+The combined flow:
+
+1. **Asks for the registry value** (proposing the current/default `.charter`) —
+   first input
+2. Shows the fragment list and asks for your **selection** — second input
+3. Displays the composition summary (no confirmation prompt)
+4. Proceeds automatically to generate the constitution
+
+If the generated constitution is not valid, run `/speckit.charter.restore` to
+restore the previous constitution.
+
+Use this when you want to go from a fresh registry to a composed constitution
+without switching commands.
+
 ## Commands
 
 | Command | Description |

@@ -24,68 +24,28 @@ No arguments required. The most recent backup is used by default.
 ### Step 1: Find Available Backups
 
 ```bash
-PROJECT_ROOT="$(pwd)"
-BACKUP_DIR="${PROJECT_ROOT}/.specify/charter/backups"
-
-if [[ ! -d "$BACKUP_DIR" ]]; then
-  echo "❌ ERROR: No backup directory found."
-  echo "No constitution backups have been created yet."
-  echo "Backups are created automatically when /speckit.charter.compose runs."
-  exit 1
-fi
-
-# List backups sorted by date (newest first)
-BACKUPS=$(find "$BACKUP_DIR" -name '*.md.backup' -type f | sort -r)
-if [[ -z "$BACKUPS" ]]; then
-  echo "❌ ERROR: No backups found in $BACKUP_DIR"
-  echo "Backups are created automatically when /speckit.charter.compose runs."
-  exit 1
-fi
-
-echo "=== AVAILABLE BACKUPS ==="
-echo "$BACKUPS" | head -10 | while read -r f; do
-  FILENAME=$(basename "$f")
-  SIZE=$(wc -c < "$f")
-  echo "$FILENAME ($SIZE bytes)"
-done
-
-BACKUP_COUNT=$(echo "$BACKUPS" | wc -l)
-echo ""
-echo "TOTAL_BACKUPS=$BACKUP_COUNT"
-echo "LATEST=$(echo "$BACKUPS" | head -1)"
+bash .specify/extensions/charter/scripts/bash/backup-list.sh "$(pwd)"
 ```
 
-If no backups exist, display the error and stop.
+`backup-list.sh` prints the available backups (newest first, up to 10) with their
+sizes, then `TOTAL_BACKUPS=<n>` and `LATEST=<path>`. If no backups exist it prints
+`TOTAL_BACKUPS=0` and exits non-zero — in that case display the error and stop:
+
+```
+❌ ERROR: No constitution backups have been created yet.
+Backups are created automatically when /speckit.charter.compose runs.
+```
 
 ### Step 2: Show Restore Preview
 
 Display information about the latest backup and the current constitution:
 
 ```bash
-PROJECT_ROOT="$(pwd)"
-CONSTITUTION="${PROJECT_ROOT}/.specify/memory/constitution.md"
-BACKUP_DIR="${PROJECT_ROOT}/.specify/charter/backups"
-LATEST=$(find "$BACKUP_DIR" -name '*.md.backup' -type f | sort -r | head -1)
-
-echo "=== LATEST BACKUP ==="
-echo "File: $(basename "$LATEST")"
-echo "Size: $(wc -c < "$LATEST") bytes"
-echo "Date: $(stat -c %y "$LATEST" 2>/dev/null || stat -f %Sm "$LATEST" 2>/dev/null)"
-echo ""
-
-echo "=== CURRENT CONSTITUTION ==="
-if [[ -f "$CONSTITUTION" ]]; then
-  echo "Size: $(wc -c < "$CONSTITUTION") bytes"
-  echo "Sections:"
-  grep -E '^\s*<!-- \[.+\] SECTION -->' "$CONSTITUTION" 2>/dev/null || echo "(no section markers)"
-else
-  echo "No constitution file exists."
-fi
-
-echo ""
-echo "=== BACKUP CONTENT PREVIEW (first 20 lines) ==="
-head -20 "$LATEST"
+bash .specify/extensions/charter/scripts/bash/backup-preview.sh "$(pwd)"
 ```
+
+`backup-preview.sh` prints the latest backup's metadata, the current
+constitution's size and section markers, and the first 20 lines of the backup.
 
 ### Step 3: Confirm Restoration
 
@@ -106,22 +66,13 @@ Proceed with restoration? (yes/no)
 ### Step 4: Restore the Backup
 
 ```bash
-PROJECT_ROOT="$(pwd)"
-CONSTITUTION="${PROJECT_ROOT}/.specify/memory/constitution.md"
-BACKUP_DIR="${PROJECT_ROOT}/.specify/charter/backups"
-LATEST=$(find "$BACKUP_DIR" -name '*.md.backup' -type f | sort -r | head -1)
-
-# Create a safety backup of the CURRENT constitution before overwriting
-if [[ -f "$CONSTITUTION" ]]; then
-  TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
-  cp "$CONSTITUTION" "${BACKUP_DIR}/constitution-${TIMESTAMP}-pre-restore.md.backup"
-  echo "Safety backup of current version: constitution-${TIMESTAMP}-pre-restore.md.backup"
-fi
-
-# Restore
-cp "$LATEST" "$CONSTITUTION"
-echo "✅ Constitution restored from: $(basename "$LATEST")"
+bash .specify/extensions/charter/scripts/bash/backup-restore.sh "$(pwd)"
 ```
+
+`backup-restore.sh` first creates a safety backup of the current constitution
+(suffixed `-pre-restore`), then overwrites the constitution with the most recent
+backup. It prints `SAFETY_BACKUP=<filename>` (if a current constitution existed),
+`RESTORED_FROM=<filename>`, and `SIZE=<bytes>`.
 
 ### Step 5: Display Result
 

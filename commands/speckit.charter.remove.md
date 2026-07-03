@@ -26,17 +26,15 @@ The argument MUST be the name of a fragment or sub-constitution to remove (e.g.,
 The argument is the name of the fragment or sub-constitution to remove.
 
 ```bash
-PROJECT_ROOT="$(pwd)"
-STATE_FILE="${PROJECT_ROOT}/.specify/charter/state.yml"
+bash .specify/extensions/charter/scripts/bash/state-check.sh "$(pwd)"
+```
 
-if [[ ! -f "$STATE_FILE" ]]; then
-  echo "❌ ERROR: No charter configuration found."
-  echo "Run /speckit.charter.config first."
-  exit 1
-fi
+If the output is `STATE_EXISTS=false`, the charter is not configured — display
+the error below and stop:
 
-echo "=== CURRENT STATE ==="
-cat "$STATE_FILE"
+```
+❌ ERROR: No charter configuration found.
+Run /speckit.charter.config first.
 ```
 
 Identify the target section name from the arguments. Verify it exists in either the `fragments` or `sub_constitutions` list in the state file.
@@ -52,32 +50,15 @@ Available sections:
 
 ### Step 2: Check for Mandatory Fragments
 
-Before removing, verify the fragment is not mandatory:
+Before removing, verify the fragment is not mandatory. `fragment-is-mandatory.sh`
+checks the target against the registry manifest's mandatory list:
 
 ```bash
-PROJECT_ROOT="$(pwd)"
-CHARTER_CONFIG="${PROJECT_ROOT}/.specify/charter/config.yml"
-REGISTRY_VALUE=$(grep "^registry:" "$CHARTER_CONFIG" | sed 's/^registry:[[:space:]]*//' | sed 's/^"\(.*\)"$/\1/')
-
-case "$REGISTRY_VALUE" in
-  git@*|https://*.git|http://*.git|https://github.com/*|https://gitlab.com/*|git://*)
-    REGISTRY_PATH="${PROJECT_ROOT}/.specify/charter/.cache/registry"
-    ;;
-  *)
-    if [[ "$REGISTRY_VALUE" == /* ]]; then
-      REGISTRY_PATH="$REGISTRY_VALUE"
-    else
-      REGISTRY_PATH="${PROJECT_ROOT}/${REGISTRY_VALUE}"
-    fi
-    ;;
-esac
-
-MANIFEST="${REGISTRY_PATH}/manifest.yml"
-if [[ -f "$MANIFEST" ]]; then
-  echo "=== MANDATORY FRAGMENTS ==="
-  sed -n '/^mandatory_fragments:/,/^[^ ]/p' "$MANIFEST" | grep -E '^\s*-\s' | sed 's/^\s*-\s*//' | sed 's/^"\(.*\)"$/\1/' | sed "s/^'\(.*\)'$/\1/"
-fi
+bash .specify/extensions/charter/scripts/bash/fragment-is-mandatory.sh "<SECTION_NAME>" "$(pwd)"
 ```
+
+It prints `MANDATORY=true` and exits `0` if the fragment is mandatory, or prints
+`MANDATORY=false` and exits `1` otherwise.
 
 If the fragment is mandatory, display:
 
@@ -101,23 +82,9 @@ Write the updated YAML to `.specify/charter/state.yml`.
 ### Step 4: Remove Snapshot
 
 ```bash
-PROJECT_ROOT="$(pwd)"
-SNAPSHOTS_DIR="${PROJECT_ROOT}/.specify/charter/snapshots"
 TARGET_NAME="<SECTION_NAME>"
-
-# Try fragment snapshot
-SNAP="${SNAPSHOTS_DIR}/fragment/${TARGET_NAME}.md"
-if [[ -f "$SNAP" ]]; then
-  rm "$SNAP"
-  echo "Snapshot removed: $SNAP"
-fi
-
-# Try sub-constitution snapshot
-SNAP="${SNAPSHOTS_DIR}/sub-constitution/${TARGET_NAME}.md"
-if [[ -f "$SNAP" ]]; then
-  rm "$SNAP"
-  echo "Snapshot removed: $SNAP"
-fi
+TYPE="<TYPE>"   # fragment | sub-constitution (known from the state list it was in)
+bash .specify/extensions/charter/scripts/bash/snapshot-remove.sh "$TARGET_NAME" "$TYPE" "$(pwd)"
 ```
 
 ### Step 5: Recompose Constitution

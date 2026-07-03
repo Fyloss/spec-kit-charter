@@ -26,16 +26,11 @@ The registry is the source of constitution fragments. It can be a local director
 1. Check if a charter configuration already exists by running:
 
 ```bash
-PROJECT_ROOT="$(pwd)"
-CHARTER_CONFIG="${PROJECT_ROOT}/.specify/charter/config.yml"
-if [[ -f "$CHARTER_CONFIG" ]]; then
-  echo "EXISTING_CONFIG=true"
-  grep "^registry:" "$CHARTER_CONFIG" | head -1
-else
-  echo "EXISTING_CONFIG=false"
-  echo "registry: .charter"
-fi
+bash .specify/extensions/charter/scripts/bash/registry-default.sh "$(pwd)"
 ```
+
+It prints `EXISTING_CONFIG=true|false` and a `registry: <value>` line (the
+existing registry, or the default `.charter` proposal).
 
 2. Present the current registry setting to the user:
 
@@ -52,60 +47,18 @@ fi
 bash .specify/extensions/charter/scripts/bash/config-write.sh "<REGISTRY_VALUE>" "$(pwd)"
 ```
 
-Note: If the script path above does not exist (extension installed differently), use the script content from `scripts/bash/config-write.sh` in the extension source.
-
 ### Step 2: Validate Registry
 
-Fetch and validate the registry to ensure it has the correct structure.
+Fetch and validate the registry. The script clones/refreshes git registries,
+resolves the local path, and verifies the structure (`manifest.yml` present with
+required `version` and `name` fields):
 
 ```bash
-PROJECT_ROOT="$(pwd)"
-export PROJECT_ROOT
-source .specify/extensions/charter/scripts/bash/charter-common.sh 2>/dev/null || true
-
-# Resolve registry path
-CHARTER_CONFIG="${PROJECT_ROOT}/.specify/charter/config.yml"
-REGISTRY_VALUE=$(grep "^registry:" "$CHARTER_CONFIG" | sed 's/^registry:[[:space:]]*//' | sed 's/^"\(.*\)"$/\1/')
-
-# Check if git URL
-case "$REGISTRY_VALUE" in
-  git@*|https://*.git|http://*.git|https://github.com/*|https://gitlab.com/*|git://*)
-    REGISTRY_TYPE="git"
-    CACHE_DIR="${PROJECT_ROOT}/.specify/charter/.cache/registry"
-    if [[ -d "${CACHE_DIR}/.git" ]]; then
-      git -C "$CACHE_DIR" fetch --quiet origin 2>&1
-      git -C "$CACHE_DIR" reset --quiet --hard origin/HEAD 2>&1
-    else
-      rm -rf "$CACHE_DIR"
-      git clone --quiet --depth 1 "$REGISTRY_VALUE" "$CACHE_DIR" 2>&1
-    fi
-    REGISTRY_PATH="$CACHE_DIR"
-    ;;
-  *)
-    REGISTRY_TYPE="directory"
-    if [[ "$REGISTRY_VALUE" == /* ]]; then
-      REGISTRY_PATH="$REGISTRY_VALUE"
-    else
-      REGISTRY_PATH="${PROJECT_ROOT}/${REGISTRY_VALUE}"
-    fi
-    ;;
-esac
-
-# Validate
-if [[ ! -d "$REGISTRY_PATH" ]]; then
-  echo "❌ ERROR: Registry path does not exist: $REGISTRY_PATH"
-  exit 1
-fi
-
-if [[ ! -f "${REGISTRY_PATH}/manifest.yml" ]]; then
-  echo "❌ ERROR: Registry is missing required manifest.yml at: $REGISTRY_PATH"
-  exit 1
-fi
-
-echo "✅ Registry validated successfully"
-echo "Registry type: $REGISTRY_TYPE"
-echo "Registry path: $REGISTRY_PATH"
+bash .specify/extensions/charter/scripts/bash/registry-validate.sh "$(pwd)"
 ```
+
+On success it prints `VALID` along with `name=` and `version=`. On failure it
+prints the error to stderr and exits non-zero.
 
 **If validation fails**: Display the error message to the user and invite them to re-run `/speckit.charter.config` with a valid registry. **Stop execution here.**
 
@@ -113,80 +66,31 @@ echo "Registry path: $REGISTRY_PATH"
 
 ### Step 3: List Available Fragments
 
-Read the manifest and enumerate all available fragments, sub-constitutions, and detect any existing local constitution.
+Enumerate all available fragments and sub-constitutions, and detect any existing
+local constitution.
 
 ```bash
-PROJECT_ROOT="$(pwd)"
-CHARTER_CONFIG="${PROJECT_ROOT}/.specify/charter/config.yml"
-REGISTRY_VALUE=$(grep "^registry:" "$CHARTER_CONFIG" | sed 's/^registry:[[:space:]]*//' | sed 's/^"\(.*\)"$/\1/')
+# Fragments + sub-constitutions, tab-separated: TYPE<TAB>CATEGORY<TAB>PATH<TAB>NAME
+# TYPE is one of: mandatory_fragment | recommended_fragment | fragment | sub-constitution
+bash .specify/extensions/charter/scripts/bash/fragment-list.sh "$(pwd)"
 
-# Resolve registry path (same logic as Step 2)
-case "$REGISTRY_VALUE" in
-  git@*|https://*.git|http://*.git|https://github.com/*|https://gitlab.com/*|git://*)
-    REGISTRY_PATH="${PROJECT_ROOT}/.specify/charter/.cache/registry"
-    ;;
-  *)
-    if [[ "$REGISTRY_VALUE" == /* ]]; then
-      REGISTRY_PATH="$REGISTRY_VALUE"
-    else
-      REGISTRY_PATH="${PROJECT_ROOT}/${REGISTRY_VALUE}"
-    fi
-    ;;
-esac
-
-MANIFEST="${REGISTRY_PATH}/manifest.yml"
-FRAGMENTS_DIR="${REGISTRY_PATH}/fragments"
-SUB_CONST_DIR="${REGISTRY_PATH}/sub-constitutions"
-CONSTITUTION="${PROJECT_ROOT}/.specify/memory/constitution.md"
-
-echo "=== MANIFEST ==="
-cat "$MANIFEST"
-echo ""
-
-echo "=== FRAGMENTS ==="
-if [[ -d "$FRAGMENTS_DIR" ]]; then
-  find "$FRAGMENTS_DIR" -name '*.md' -type f | sort | while read -r f; do
-    rel="${f#${FRAGMENTS_DIR}/}"
-    name="${rel%.md}"
-    echo "$name"
-  done
-fi
-echo ""
-
-echo "=== SUB-CONSTITUTIONS ==="
-if [[ -d "$SUB_CONST_DIR" ]]; then
-  find "$SUB_CONST_DIR" -name '*.md' -type f | sort | while read -r f; do
-    rel="${f#${SUB_CONST_DIR}/}"
-    name="${rel%.md}"
-    echo "$name"
-  done
-fi
-echo ""
-
-echo "=== LOCAL CONSTITUTION ==="
-if [[ -f "$CONSTITUTION" ]]; then
-  # Check if it's a placeholder template (contains bracket placeholders like [PROJECT_NAME])
-  PLACEHOLDER_COUNT=$(grep -cE '\[(PROJECT_NAME|PRINCIPLE_[0-9]+_NAME|PRINCIPLE_[0-9]+_DESCRIPTION|SECTION_[0-9]+_NAME|SECTION_[0-9]+_CONTENT|CONSTITUTION_VERSION|RATIFICATION_DATE|LAST_AMENDED_DATE|GOVERNANCE_RULES)\]' "$CONSTITUTION" 2>/dev/null || true)
-  PLACEHOLDER_COUNT="${PLACEHOLDER_COUNT:-0}"
-  PLACEHOLDER_COUNT="$(echo "$PLACEHOLDER_COUNT" | tr -d '[:space:]')"
-  if [[ "$PLACEHOLDER_COUNT" -gt 0 ]]; then
-    echo "EXISTS=false"
-    echo "REASON=placeholder_template"
-    echo "PLACEHOLDER_COUNT=$PLACEHOLDER_COUNT"
-  else
-    echo "EXISTS=true"
-    echo "SIZE=$(wc -c < "$CONSTITUTION") bytes"
-  fi
-else
-  echo "EXISTS=false"
-fi
+# Detect an existing local constitution.
+# Exit code: 0 = placeholder (skip), 1 = usable constitution, 2 = no file.
+bash .specify/extensions/charter/scripts/bash/constitution-is-placeholder.sh
+echo "placeholder_check_exit=$?"
 ```
+
+`fragment-list.sh` already tags mandatory and recommended fragments via the
+`TYPE` column (read from the registry `manifest.yml`), so no separate manifest
+parsing is needed. Treat the local constitution as selectable only when
+`constitution-is-placeholder.sh` exits with code `1` (usable, not a placeholder).
 
 ### Step 4: Present Selection List
 
 Using the data from Step 3, build and present a numbered selection list to the user following this structure:
 
-**Parse the manifest** to identify `mandatory_fragments` and `recommended_fragments` lists.
+**Use the `TYPE` column** from `fragment-list.sh` to identify mandatory and
+recommended fragments (no separate manifest parsing needed).
 
 **Build the selection list** in this exact order:
 
@@ -238,41 +142,64 @@ Parse the user's selection and combine with mandatory fragments to build the com
 
 **CRITICAL**: Only items whose numbers appear in the user's selection are included. If `<CURRENT PROJECT CONSTITUTION>` has number N and N is NOT in the user's selection, it must NOT be included in the composition. The same applies to any fragment or sub-constitution — only selected numbers are included.
 
-### Step 6: Show Composition Summary and Confirm
+### Step 6: Save Composition State
 
-Present the final composition for validation:
+Build the composition state and write it to `.specify/charter/state.yml`.
+
+The YAML structure is:
+
+```yaml
+# Charter composition state
+# Generated by /speckit.charter.config
+# Last configured: <CURRENT_ISO_DATE>
+
+fragments:
+  - "<fragment_name_1>"
+  - "<fragment_name_2>"
+  - "<fragment_name_3>"
+
+sub_constitutions:
+  - "<sub_constitution_name_1>"
+  - "<sub_constitution_name_2>"
+
+local_constitution: true  # or false
+local_constitution_content: |
+  <LOCAL CONSTITUTION CONTENT WITHOUT SPECKIT METADATA>
+```
+
+**Rules for `local_constitution_content`:**
+- Only present if `local_constitution: true` (the user selected
+  `<CURRENT PROJECT CONSTITUTION>`).
+- Obtain the stripped content (Sync Impact Report header and the
+  `Version/Ratified/Last Amended` footer removed) with:
 
 ```bash
-# Calculate total size of all selected content
-PROJECT_ROOT="$(pwd)"
-CHARTER_CONFIG="${PROJECT_ROOT}/.specify/charter/config.yml"
-REGISTRY_VALUE=$(grep "^registry:" "$CHARTER_CONFIG" | sed 's/^registry:[[:space:]]*//' | sed 's/^"\(.*\)"$/\1/')
-
-case "$REGISTRY_VALUE" in
-  git@*|https://*.git|http://*.git|https://github.com/*|https://gitlab.com/*|git://*)
-    REGISTRY_PATH="${PROJECT_ROOT}/.specify/charter/.cache/registry"
-    ;;
-  *)
-    if [[ "$REGISTRY_VALUE" == /* ]]; then
-      REGISTRY_PATH="$REGISTRY_VALUE"
-    else
-      REGISTRY_PATH="${PROJECT_ROOT}/${REGISTRY_VALUE}"
-    fi
-    ;;
-esac
-
-total=0
-# For each selected fragment, add its file size
-# Example for one fragment:
-# size=$(wc -c < "${REGISTRY_PATH}/fragments/<FRAGMENT_NAME>.md")
-# total=$((total + size))
-
-# For local constitution (if selected):
-# size=$(wc -c < "${PROJECT_ROOT}/.specify/memory/constitution.md")
-# total=$((total + size))
-
-echo "TOTAL_BYTES=${total}"
+bash .specify/extensions/charter/scripts/bash/constitution-strip-local.sh
 ```
+
+Write the assembled YAML to the state file (the script reads the content from
+stdin):
+
+```bash
+bash .specify/extensions/charter/scripts/bash/state-write.sh "$(pwd)" << 'STATEEOF'
+<GENERATED_YAML_CONTENT>
+STATEEOF
+```
+
+### Step 7: Show Composition Summary
+
+Present the final composition for information. **Do NOT ask for confirmation** —
+the only inputs this command requests are the registry value (Step 1) and the
+fragment selection (Step 5).
+
+Compute the total size (reads the just-saved state, sums all selected fragment
+content plus the local constitution):
+
+```bash
+bash .specify/extensions/charter/scripts/bash/compose-size-check.sh "$(pwd)"
+```
+
+This outputs `TOTAL_BYTES=<n>` and `EXCEEDS_32K=true|false`.
 
 Display the summary in this format:
 
@@ -295,79 +222,11 @@ SUB-CONSTITUTION <sub_constitution_name_1>
 - Each FRAGMENT line shows the fragment name as it appears in the registry (path without `.md`).
 - Each SUB-CONSTITUTION line shows the sub-constitution name.
 
-**Size warning:** If the total content size exceeds 32,768 bytes (32 KiB), add this warning before the confirmation prompt:
+**Size warning:** If `EXCEEDS_32K=true`, add this warning:
 
 ```
 ⚠️ The total constitution length will exceed 32 KiB:
 Critical information may be overlooked by the agent, and unnecessary tokens increase inference cost.
-```
-
-**Confirmation prompt:**
-
-```
-Do you confirm this composition? (yes/no/cancel)
-```
-
-- **yes**: Proceed to Step 7 (save state).
-- **no**: Return to Step 4 (re-display selection list).
-- **cancel**: Abort the command entirely.
-
-### Step 7: Save Composition State
-
-On user confirmation, save the composition state to the charter state file.
-
-Write the state as YAML to `.specify/charter/state.yml`:
-
-```yaml
-# Charter composition state
-# Generated by /speckit.charter.config
-# Last configured: <CURRENT_ISO_DATE>
-
-fragments:
-  - "<fragment_name_1>"
-  - "<fragment_name_2>"
-  - "<fragment_name_3>"
-
-sub_constitutions:
-  - "<sub_constitution_name_1>"
-  - "<sub_constitution_name_2>"
-
-local_constitution: true  # or false
-local_constitution_content: |
-  <FULL CONTENT OF LOCAL CONSTITUTION WITHOUT SPECKIT METADATA>
-```
-
-**Rules for `local_constitution_content`:**
-- Only present if `local_constitution: true`
-- Must contain the full content of the existing constitution
-- **Strip** the Spec Kit top comment (HTML comment block starting with `<!--` that contains "Sync Impact Report")
-- **Strip** the Spec Kit bottom metadata line (line starting with `*Version*:` or `**Version**:` containing `Ratified` and `Last Amended`)
-- To detect the top comment: check if the first line starts with `<!--` and the second line contains `Sync Impact Report`
-- To detect the bottom metadata: check if a line starts with `*Version*` or `**Version**`
-
-To strip these, run:
-
-```bash
-CONSTITUTION="${PROJECT_ROOT}/.specify/memory/constitution.md"
-if [[ -f "$CONSTITUTION" ]]; then
-  awk '
-  BEGIN { skip_top=0 }
-  NR==1 && /^<!--/ { skip_top=1; next }
-  skip_top && /-->/ { skip_top=0; next }
-  skip_top { next }
-  /^\*\*?Version\*\*?:.*Ratified/ { next }
-  { print }
-  ' "$CONSTITUTION"
-fi
-```
-
-Write this state file using:
-
-```bash
-mkdir -p "${PROJECT_ROOT}/.specify/charter"
-cat > "${PROJECT_ROOT}/.specify/charter/state.yml" << 'STATEEOF'
-<GENERATED_YAML_CONTENT>
-STATEEOF
 ```
 
 ### Step 8: Display Final Message

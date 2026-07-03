@@ -26,10 +26,12 @@ Configure the charter registry and select constitution fragments.
    - Sub-constitutions: numbered, selectable, listed under `[SUB-CONSTITUTIONS]`
    - Current project constitution: numbered, listed if exists
 
-3. **Confirmation** — shows composition summary with size check
-   - `yes` — save configuration
-   - `no` — return to fragment selection
-   - `cancel` — abort
+3. **Summary** — shows the composition summary with size check for information
+   only. **No confirmation prompt is shown** — the command only asks for the
+   registry (step 1) and the fragment selection (step 2).
+
+After saving, the command reminds you that if the generated constitution is not
+valid, `/speckit.charter.restore` can restore the previous constitution.
 
 ### Selection Syntax
 
@@ -64,6 +66,31 @@ Compose the project constitution from selected fragments.
 ```
 
 ### Modes
+
+#### Auto-Configuration Mode (no prior config)
+
+Triggered when `/speckit.charter.compose` is run before `/speckit.charter.config`
+was ever run — detected by the absence of `.specify/charter/state.yml`.
+
+Instead of erroring out, compose runs an inline configuration flow and then
+composes in the same pass:
+
+1. **Registry selection/validation** — prompted for the registry location
+   (proposing the current/default `.charter`); the registry is validated. This
+   is a required input, not silently defaulted.
+2. **Fragment selection** — the interactive numbered list is shown; the user
+   selects fragments. This is the second input.
+3. **Composition summary** — the selected composition is displayed for
+   information. **No yes/no/cancel confirmation is requested.**
+4. **Composition** — the flow proceeds automatically to generate the final
+   constitution.
+
+Before composing, the flow reminds you that if the generated constitution is not
+valid, `/speckit.charter.restore` can restore the previous constitution.
+
+This lets users configure the charter and generate the constitution in a single
+`/speckit.charter.compose` step. Once the state file exists, subsequent runs use
+the normal modes below.
 
 #### Creation Mode
 

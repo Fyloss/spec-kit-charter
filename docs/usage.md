@@ -33,9 +33,11 @@ You'll be prompted for:
    - Recommended fragments are pre-selected but can be removed
    - Regular fragments and sub-constitutions are optional
 
-### 2. Review and Confirm
+### 2. Review the Summary
 
-After selecting fragments, you'll see a composition summary:
+After selecting fragments, you'll see a composition summary shown for
+information — there is **no confirmation prompt**. The command only asks for the
+registry value and the fragment selection:
 
 ```
 ========= FINAL PROJECT CONSTITUTION =========
@@ -47,13 +49,11 @@ SUB-CONSTITUTION package-auth
 ------- PROJECT SPECIFIC ------
 <CURRENT PROJECT CONSTITUTION>
 ===============================================
-
-Do you confirm this composition? (yes/no/cancel)
 ```
 
-- **yes** — save the configuration
-- **no** — go back to fragment selection
-- **cancel** — abort entirely
+The configuration is saved automatically. If the generated constitution later
+turns out to be invalid, run `/speckit.charter.restore` to restore the previous
+constitution.
 
 ### 3. Compose the Constitution
 
@@ -63,6 +63,33 @@ Do you confirm this composition? (yes/no/cancel)
 
 This generates the final constitution file at `.specify/memory/constitution.md`
 with section markers for future updates.
+
+### Quick Setup (Config + Compose in One Step)
+
+If you run `/speckit.charter.compose` **before** ever running
+`/speckit.charter.config`, Charter detects that no configuration exists
+(`.specify/charter/state.yml` is missing) and runs the configuration inline
+before composing:
+
+```
+/speckit.charter.compose
+```
+
+The combined flow:
+
+1. **Asks for the registry value** (proposing the current/default `.charter`) —
+   a required input, not silently defaulted.
+2. Prompts for **fragment selection** — the second input.
+3. Displays the composition summary **for information only — no confirmation is
+   asked**.
+4. Proceeds automatically to generate the constitution.
+
+Before composing, it reminds you that `/speckit.charter.restore` can restore the
+previous constitution if the generated one is not valid.
+
+This is equivalent to running `/speckit.charter.config` followed by
+`/speckit.charter.compose`, but in a single step. Once the state file exists,
+`/speckit.charter.compose` behaves normally (update/recreation/override modes).
 
 ## Updating Fragments
 

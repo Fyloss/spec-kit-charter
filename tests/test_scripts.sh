@@ -460,6 +460,253 @@ test_backup() {
 
 test_backup
 
+# ── State Check ───────────────────────────────────────────────────────────
+
+section "state-check.sh"
+
+test_state_check() {
+  setup
+  local output
+  output="$(bash "${SCRIPTS_DIR}/state-check.sh" "${TMP_DIR}/project" 2>&1)"
+  if echo "$output" | grep -q "STATE_EXISTS=false"; then
+    pass "state-check: reports missing state"
+  else
+    fail "state-check: reports missing state" "output: $output"
+  fi
+
+  cat > "${TMP_DIR}/project/.specify/charter/state.yml" <<'EOF'
+fragments:
+  - "global/compliance"
+local_constitution: false
+EOF
+  output="$(bash "${SCRIPTS_DIR}/state-check.sh" "${TMP_DIR}/project" 2>&1)"
+  if echo "$output" | grep -q "STATE_EXISTS=true" && echo "$output" | grep -q "global/compliance"; then
+    pass "state-check: reports and prints existing state"
+  else
+    fail "state-check: reports and prints existing state" "output: $output"
+  fi
+}
+
+test_state_check
+
+# ── Registry Default ──────────────────────────────────────────────────────
+
+section "registry-default.sh"
+
+test_registry_default() {
+  setup
+  local output
+  output="$(bash "${SCRIPTS_DIR}/registry-default.sh" "${TMP_DIR}/project" 2>&1)"
+  if echo "$output" | grep -q "EXISTING_CONFIG=true" && echo "$output" | grep -q "registry: .charter"; then
+    pass "registry-default: reports existing config"
+  else
+    fail "registry-default: reports existing config" "output: $output"
+  fi
+
+  rm -f "${TMP_DIR}/project/.specify/charter/config.yml"
+  output="$(bash "${SCRIPTS_DIR}/registry-default.sh" "${TMP_DIR}/project" 2>&1)"
+  if echo "$output" | grep -q "EXISTING_CONFIG=false" && echo "$output" | grep -q "registry: .charter"; then
+    pass "registry-default: proposes default when no config"
+  else
+    fail "registry-default: proposes default when no config" "output: $output"
+  fi
+}
+
+test_registry_default
+
+# ── Fragment Is Mandatory ─────────────────────────────────────────────────
+
+section "fragment-is-mandatory.sh"
+
+test_fragment_is_mandatory() {
+  setup
+  local output rc=0
+  output="$(bash "${SCRIPTS_DIR}/fragment-is-mandatory.sh" "global/compliance" "${TMP_DIR}/project" 2>&1)" || rc=$?
+  if [[ "$rc" -eq 0 ]] && echo "$output" | grep -q "MANDATORY=true"; then
+    pass "fragment-is-mandatory: detects mandatory fragment"
+  else
+    fail "fragment-is-mandatory: detects mandatory fragment" "rc=$rc output: $output"
+  fi
+
+  rc=0
+  output="$(bash "${SCRIPTS_DIR}/fragment-is-mandatory.sh" "global/code-quality" "${TMP_DIR}/project" 2>&1)" || rc=$?
+  if [[ "$rc" -eq 1 ]] && echo "$output" | grep -q "MANDATORY=false"; then
+    pass "fragment-is-mandatory: detects non-mandatory fragment"
+  else
+    fail "fragment-is-mandatory: detects non-mandatory fragment" "rc=$rc output: $output"
+  fi
+}
+
+test_fragment_is_mandatory
+
+# ── Snapshot List Missing ─────────────────────────────────────────────────
+
+section "snapshot-list-missing.sh"
+
+test_snapshot_list_missing() {
+  setup
+  cat > "${TMP_DIR}/project/.specify/charter/state.yml" <<'EOF'
+fragments:
+  - "global/compliance"
+  - "global/code-quality"
+local_constitution: false
+EOF
+  bash "${SCRIPTS_DIR}/snapshot-save.sh" "global/compliance" "fragment" "${TMP_DIR}/project" >/dev/null 2>&1
+
+  local output
+  output="$(bash "${SCRIPTS_DIR}/snapshot-list-missing.sh" "${TMP_DIR}/project" 2>&1)"
+  if echo "$output" | grep -q "MISSING_SNAPSHOTS=true" && echo "$output" | grep -q "MISSING=global/code-quality"; then
+    pass "snapshot-list-missing: reports missing snapshot"
+  else
+    fail "snapshot-list-missing: reports missing snapshot" "output: $output"
+  fi
+
+  bash "${SCRIPTS_DIR}/snapshot-save.sh" "global/code-quality" "fragment" "${TMP_DIR}/project" >/dev/null 2>&1
+  output="$(bash "${SCRIPTS_DIR}/snapshot-list-missing.sh" "${TMP_DIR}/project" 2>&1)"
+  if echo "$output" | grep -q "MISSING_SNAPSHOTS=false"; then
+    pass "snapshot-list-missing: reports none missing when all present"
+  else
+    fail "snapshot-list-missing: reports none missing when all present" "output: $output"
+  fi
+}
+
+test_snapshot_list_missing
+
+# ── Snapshot Detect Modified ──────────────────────────────────────────────
+
+section "snapshot-detect-modified.sh"
+
+test_snapshot_detect_modified() {
+  setup
+  cat > "${TMP_DIR}/project/.specify/charter/state.yml" <<'EOF'
+fragments:
+  - "global/compliance"
+local_constitution: false
+EOF
+  # No snapshots yet — nothing can be reported as modified
+  local output
+  output="$(bash "${SCRIPTS_DIR}/snapshot-detect-modified.sh" "${TMP_DIR}/project" 2>&1)"
+  if echo "$output" | grep -q "MODIFIED=false"; then
+    pass "snapshot-detect-modified: no snapshots => not modified"
+  else
+    fail "snapshot-detect-modified: no snapshots => not modified" "output: $output"
+  fi
+
+  # A snapshot that differs from the current constitution section => modified
+  cp "${FIXTURES_DIR}/sample-composed-constitution.md" "${TMP_DIR}/project/.specify/memory/constitution.md"
+  mkdir -p "${TMP_DIR}/project/.specify/charter/snapshots/fragment/global"
+  echo "TOTALLY DIFFERENT SNAPSHOT CONTENT" > "${TMP_DIR}/project/.specify/charter/snapshots/fragment/global/compliance.md"
+  output="$(bash "${SCRIPTS_DIR}/snapshot-detect-modified.sh" "${TMP_DIR}/project" 2>&1)"
+  if echo "$output" | grep -q "MODIFIED=true" && echo "$output" | grep -q "MODIFIED_SECTION=global/compliance"; then
+    pass "snapshot-detect-modified: detects a modified section"
+  else
+    fail "snapshot-detect-modified: detects a modified section" "output: $output"
+  fi
+}
+
+test_snapshot_detect_modified
+
+# ── Constitution Validate Sections ────────────────────────────────────────
+
+section "constitution-validate-sections.sh"
+
+test_constitution_validate_sections() {
+  setup
+  cp "${FIXTURES_DIR}/sample-composed-constitution.md" "${TMP_DIR}/project/.specify/memory/constitution.md"
+  cat > "${TMP_DIR}/project/.specify/charter/state.yml" <<'EOF'
+fragments:
+  - "global/compliance"
+  - "global/code-quality"
+local_constitution: true
+EOF
+  local output rc=0
+  output="$(bash "${SCRIPTS_DIR}/constitution-validate-sections.sh" "${TMP_DIR}/project" 2>&1)" || rc=$?
+  if [[ "$rc" -eq 0 ]] && echo "$output" | grep -q "VALID=true"; then
+    pass "constitution-validate-sections: all expected sections present"
+  else
+    fail "constitution-validate-sections: all expected sections present" "rc=$rc output: $output"
+  fi
+
+  cat > "${TMP_DIR}/project/.specify/charter/state.yml" <<'EOF'
+fragments:
+  - "global/compliance"
+  - "missing/section"
+local_constitution: false
+EOF
+  rc=0
+  output="$(bash "${SCRIPTS_DIR}/constitution-validate-sections.sh" "${TMP_DIR}/project" 2>&1)" || rc=$?
+  if [[ "$rc" -eq 1 ]] && echo "$output" | grep -q "MISSING=missing/section"; then
+    pass "constitution-validate-sections: reports missing section"
+  else
+    fail "constitution-validate-sections: reports missing section" "rc=$rc output: $output"
+  fi
+}
+
+test_constitution_validate_sections
+
+# ── Backup List / Preview / Restore ───────────────────────────────────────
+
+section "backup-list.sh / backup-preview.sh / backup-restore.sh"
+
+test_backup_list() {
+  setup
+  local output rc=0
+  output="$(bash "${SCRIPTS_DIR}/backup-list.sh" "${TMP_DIR}/project" 2>&1)" || rc=$?
+  if [[ "$rc" -eq 1 ]] && echo "$output" | grep -q "TOTAL_BACKUPS=0"; then
+    pass "backup-list: reports no backups"
+  else
+    fail "backup-list: reports no backups" "rc=$rc output: $output"
+  fi
+
+  cp "${FIXTURES_DIR}/sample-constitution.md" "${TMP_DIR}/project/.specify/memory/constitution.md"
+  bash "${SCRIPTS_DIR}/constitution-backup.sh" "${TMP_DIR}/project" >/dev/null 2>&1
+  rc=0
+  output="$(bash "${SCRIPTS_DIR}/backup-list.sh" "${TMP_DIR}/project" 2>&1)" || rc=$?
+  if [[ "$rc" -eq 0 ]] && echo "$output" | grep -q "TOTAL_BACKUPS=1" && echo "$output" | grep -q "LATEST="; then
+    pass "backup-list: lists an existing backup"
+  else
+    fail "backup-list: lists an existing backup" "rc=$rc output: $output"
+  fi
+}
+
+test_backup_preview() {
+  setup
+  cp "${FIXTURES_DIR}/sample-constitution.md" "${TMP_DIR}/project/.specify/memory/constitution.md"
+  bash "${SCRIPTS_DIR}/constitution-backup.sh" "${TMP_DIR}/project" >/dev/null 2>&1
+  local output
+  output="$(bash "${SCRIPTS_DIR}/backup-preview.sh" "${TMP_DIR}/project" 2>&1)"
+  if echo "$output" | grep -q "=== LATEST BACKUP ===" && echo "$output" | grep -q "BACKUP CONTENT PREVIEW"; then
+    pass "backup-preview: previews the latest backup"
+  else
+    fail "backup-preview: previews the latest backup" "output: $output"
+  fi
+}
+
+test_backup_restore() {
+  setup
+  echo "ORIGINAL CONSTITUTION CONTENT" > "${TMP_DIR}/project/.specify/memory/constitution.md"
+  bash "${SCRIPTS_DIR}/constitution-backup.sh" "${TMP_DIR}/project" >/dev/null 2>&1
+  echo "CHANGED CONTENT" > "${TMP_DIR}/project/.specify/memory/constitution.md"
+
+  local output
+  output="$(bash "${SCRIPTS_DIR}/backup-restore.sh" "${TMP_DIR}/project" 2>&1)"
+  if echo "$output" | grep -q "RESTORED_FROM=" && grep -q "ORIGINAL CONSTITUTION CONTENT" "${TMP_DIR}/project/.specify/memory/constitution.md"; then
+    pass "backup-restore: restores the latest backup"
+  else
+    fail "backup-restore: restores the latest backup" "output: $output"
+  fi
+
+  if echo "$output" | grep -q "SAFETY_BACKUP="; then
+    pass "backup-restore: creates a pre-restore safety backup"
+  else
+    fail "backup-restore: creates a pre-restore safety backup" "output: $output"
+  fi
+}
+
+test_backup_list
+test_backup_preview
+test_backup_restore
+
 # ── Summary ───────────────────────────────────────────────────────────────
 
 echo ""

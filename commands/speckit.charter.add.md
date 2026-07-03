@@ -24,75 +24,29 @@ The argument MAY be the name of a fragment or sub-constitution to add (e.g., `gl
 ### Step 1: Validate State
 
 ```bash
-PROJECT_ROOT="$(pwd)"
-STATE_FILE="${PROJECT_ROOT}/.specify/charter/state.yml"
-
-if [[ ! -f "$STATE_FILE" ]]; then
-  echo "❌ ERROR: No charter configuration found."
-  echo "Run /speckit.charter.config first to configure the registry and select fragments."
-  exit 1
-fi
-
-echo "=== CURRENT STATE ==="
-cat "$STATE_FILE"
+bash .specify/extensions/charter/scripts/bash/state-check.sh "$(pwd)"
 ```
 
-If the state file doesn't exist, display the error and stop.
+If the output is `STATE_EXISTS=false`, the charter is not configured — display the
+error below and stop:
+
+```
+❌ ERROR: No charter configuration found.
+Run /speckit.charter.config first to configure the registry and select fragments.
+```
 
 ### Step 2: Resolve Registry and List Available Fragments
 
 ```bash
-PROJECT_ROOT="$(pwd)"
-CHARTER_CONFIG="${PROJECT_ROOT}/.specify/charter/config.yml"
-STATE_FILE="${PROJECT_ROOT}/.specify/charter/state.yml"
-REGISTRY_VALUE=$(grep "^registry:" "$CHARTER_CONFIG" | sed 's/^registry:[[:space:]]*//' | sed 's/^"\(.*\)"$/\1/')
-
-case "$REGISTRY_VALUE" in
-  git@*|https://*.git|http://*.git|https://github.com/*|https://gitlab.com/*|git://*)
-    REGISTRY_PATH="${PROJECT_ROOT}/.specify/charter/.cache/registry"
-    # Refresh registry
-    git -C "$REGISTRY_PATH" fetch --quiet origin 2>&1 || true
-    git -C "$REGISTRY_PATH" reset --quiet --hard origin/HEAD 2>&1 || true
-    ;;
-  *)
-    if [[ "$REGISTRY_VALUE" == /* ]]; then
-      REGISTRY_PATH="$REGISTRY_VALUE"
-    else
-      REGISTRY_PATH="${PROJECT_ROOT}/${REGISTRY_VALUE}"
-    fi
-    ;;
-esac
-
-FRAGMENTS_DIR="${REGISTRY_PATH}/fragments"
-SUB_CONST_DIR="${REGISTRY_PATH}/sub-constitutions"
-
-echo "=== ALL REGISTRY FRAGMENTS ==="
-if [[ -d "$FRAGMENTS_DIR" ]]; then
-  find "$FRAGMENTS_DIR" -name '*.md' -type f | sort | while read -r f; do
-    rel="${f#${FRAGMENTS_DIR}/}"
-    name="${rel%.md}"
-    echo "FRAGMENT:$name"
-  done
-fi
-
-echo ""
-echo "=== ALL REGISTRY SUB-CONSTITUTIONS ==="
-if [[ -d "$SUB_CONST_DIR" ]]; then
-  find "$SUB_CONST_DIR" -name '*.md' -type f | sort | while read -r f; do
-    rel="${f#${SUB_CONST_DIR}/}"
-    name="${rel%.md}"
-    echo "SUB:$name"
-  done
-fi
-
-echo ""
-echo "=== CURRENTLY SELECTED FRAGMENTS ==="
-sed -n '/^fragments:/,/^[^ ]/p' "$STATE_FILE" | grep -E '^\s*-\s' | sed 's/^\s*-\s*//' | sed 's/^"\(.*\)"$/\1/' | sed "s/^'\(.*\)'$/\1/"
-
-echo ""
-echo "=== CURRENTLY SELECTED SUB-CONSTITUTIONS ==="
-sed -n '/^sub_constitutions:/,/^[^ ]/p' "$STATE_FILE" | grep -E '^\s*-\s' | sed 's/^\s*-\s*//' | sed 's/^"\(.*\)"$/\1/' | sed "s/^'\(.*\)'$/\1/"
+echo "=== ALL REGISTRY FRAGMENTS & SUB-CONSTITUTIONS ==="
+# Tab-separated: TYPE<TAB>CATEGORY<TAB>PATH<TAB>NAME
+# TYPE = mandatory_fragment | recommended_fragment | fragment | sub-constitution
+bash .specify/extensions/charter/scripts/bash/fragment-list.sh "$(pwd)"
 ```
+
+The currently selected fragments and sub-constitutions were already printed by
+`state-check.sh` in Step 1 (the `fragments:` and `sub_constitutions:` lists in
+the state).
 
 ### Step 3: Present Available (Not Yet Selected) Fragments
 
@@ -203,50 +157,19 @@ Write the updated YAML to `.specify/charter/state.yml`.
 
 ### Step 7: Fetch and Save Snapshot
 
-Fetch the fragment content from the registry and save a snapshot:
+Fetch the fragment content from the registry and save a snapshot. The type
+(`fragment` or `sub-constitution`) is known from the selection made in the
+previous steps. `snapshot-save.sh` copies the registry version into the snapshot
+store, and `fragment-read.sh` prints the content to embed:
 
 ```bash
-PROJECT_ROOT="$(pwd)"
-CHARTER_CONFIG="${PROJECT_ROOT}/.specify/charter/config.yml"
-SNAPSHOTS_DIR="${PROJECT_ROOT}/.specify/charter/snapshots"
-REGISTRY_VALUE=$(grep "^registry:" "$CHARTER_CONFIG" | sed 's/^registry:[[:space:]]*//' | sed 's/^"\(.*\)"$/\1/')
-
-case "$REGISTRY_VALUE" in
-  git@*|https://*.git|http://*.git|https://github.com/*|https://gitlab.com/*|git://*)
-    REGISTRY_PATH="${PROJECT_ROOT}/.specify/charter/.cache/registry"
-    ;;
-  *)
-    if [[ "$REGISTRY_VALUE" == /* ]]; then
-      REGISTRY_PATH="$REGISTRY_VALUE"
-    else
-      REGISTRY_PATH="${PROJECT_ROOT}/${REGISTRY_VALUE}"
-    fi
-    ;;
-esac
-
-# Determine type and source file
 FRAG_NAME="<NEW_FRAGMENT_NAME>"
-FRAG_FILE="${REGISTRY_PATH}/fragments/${FRAG_NAME}.md"
-SUB_FILE="${REGISTRY_PATH}/sub-constitutions/${FRAG_NAME}.md"
+TYPE="<TYPE>"   # fragment | sub-constitution
 
-if [[ -f "$FRAG_FILE" ]]; then
-  SNAPSHOT_FILE="${SNAPSHOTS_DIR}/fragment/${FRAG_NAME}.md"
-  mkdir -p "$(dirname "$SNAPSHOT_FILE")"
-  cp "$FRAG_FILE" "$SNAPSHOT_FILE"
-  echo "✅ Snapshot saved: $SNAPSHOT_FILE"
-  echo "CONTENT:"
-  cat "$FRAG_FILE"
-elif [[ -f "$SUB_FILE" ]]; then
-  SNAPSHOT_FILE="${SNAPSHOTS_DIR}/sub-constitution/${FRAG_NAME}.md"
-  mkdir -p "$(dirname "$SNAPSHOT_FILE")"
-  cp "$SUB_FILE" "$SNAPSHOT_FILE"
-  echo "✅ Snapshot saved: $SNAPSHOT_FILE"
-  echo "CONTENT:"
-  cat "$SUB_FILE"
-else
-  echo "❌ ERROR: Fragment not found in registry: $FRAG_NAME"
-  exit 1
-fi
+bash .specify/extensions/charter/scripts/bash/snapshot-save.sh "$FRAG_NAME" "$TYPE" "$(pwd)"
+
+echo "CONTENT:"
+bash .specify/extensions/charter/scripts/bash/fragment-read.sh "$FRAG_NAME" "$TYPE" "$(pwd)"
 ```
 
 ### Step 8: Recompose Constitution
