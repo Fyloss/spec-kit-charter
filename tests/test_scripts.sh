@@ -284,6 +284,19 @@ test_extract_project_specific() {
 test_extract_section
 test_extract_project_specific
 
+test_extract_no_trailing_blank() {
+  local output last_line
+  output="$(bash "${SCRIPTS_DIR}/constitution-extract.sh" "global/compliance" "${FIXTURES_DIR}/sample-composed-constitution.md" 2>&1)"
+  last_line="$(printf '%s' "$output" | tail -1)"
+  if [[ -n "$last_line" ]]; then
+    pass "constitution-extract: strips trailing blank line (inter-section separator)"
+  else
+    fail "constitution-extract: strips trailing blank line (inter-section separator)" "last line was empty"
+  fi
+}
+
+test_extract_no_trailing_blank
+
 # ── Constitution Strip Local ───────────────────────────────────────────────
 
 section "constitution-strip-local.sh"

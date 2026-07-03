@@ -134,11 +134,14 @@ The generated constitution follows this structure:
 <!-- Sync Impact Report ... -->    ← Added by /speckit.constitution
 <!-- [fragment_1] SECTION -->
 <fragment_1 content>
+
 <!-- [fragment_2] SECTION -->
 <fragment_2 content>
+
 <!-- [sub_const_1] SECTION -->
 WHEN WORKING ON sub_const_1, FOLLOW THESE INSTRUCTIONS:
 <sub_const_1 content>
+
 <!-- [PROJECT SPECIFIC] SECTION -->
 <local constitution content>
 **Version**: X.Y.Z | ...           ← Added by /speckit.constitution

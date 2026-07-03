@@ -16,7 +16,7 @@ if [[ ! -f "$CONSTITUTION_PATH" ]]; then
 fi
 
 awk -v section="$SECTION_NAME" '
-BEGIN { in_section=0; found=0 }
+BEGIN { in_section=0; found=0; n=0 }
 
 # Match section start
 /^[[:space:]]*<!-- \[/ {
@@ -41,6 +41,13 @@ BEGIN { in_section=0; found=0 }
 in_section && /^\*Version\*:/ { in_section=0; exit }
 in_section && /^\*\*Version\*\*:/ { in_section=0; exit }
 
-# Output content while in section
-in_section { print }
+# Collect content while in section
+in_section { lines[n++] = $0 }
+
+END {
+  # Trim trailing blank lines so inter-section separators are not included
+  last = n - 1
+  while (last >= 0 && lines[last] == "") last--
+  for (i = 0; i <= last; i++) print lines[i]
+}
 ' "$CONSTITUTION_PATH"

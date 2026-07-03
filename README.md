@@ -172,11 +172,14 @@ The composed constitution uses HTML comment markers to delimit sections:
 ```markdown
 <!-- [global/compliance] SECTION -->
 <compliance fragment content>
+
 <!-- [global/code-quality] SECTION -->
 <code quality fragment content>
+
 <!-- [package-auth] SECTION -->
 WHEN WORKING ON package-auth, FOLLOW THESE INSTRUCTIONS:
 <package-auth sub-constitution content>
+
 <!-- [PROJECT SPECIFIC] SECTION -->
 <existing project-specific constitution content>
 ```
