@@ -44,16 +44,29 @@ generated constitution. They enable:
 - Replacing specific sections during updates
 - Preserving project-specific content during recomposition
 
-### 4. Snapshot-Based Change Detection
+### 4. Snapshot-Based Change Detection (fragments only)
 
-Rather than tracking fragment hashes, Charter saves full fragment content as
-"snapshots" after each compose. On subsequent composes, it compares each section
-in the constitution against its snapshot to detect local modifications. This
-approach:
+Rather than tracking fragment hashes, Charter saves full **fragment** content as
+"snapshots" after each compose. On subsequent composes, it compares each fragment
+section in the constitution against its snapshot to detect local modifications.
+This approach:
 
 - Works without a database or complex state
 - Handles content normalization naturally
 - Provides clear diff capabilities
+
+Sub-constitutions (registry and distributed) are intentionally **not**
+snapshotted — see “Cacheless sub-constitutions” below.
+
+### 5. Cacheless Sub-Constitutions
+
+Both registry sub-constitutions (`sub-constitutions/<name>.md`) and distributed
+sub-constitutions (`<package>/.charter/constitution.md`) are read **fresh from
+their source on every compose**. There is no snapshot and no change-detection
+prompt for them. This lets package owners update their rules and have a plain
+`/speckit.charter.compose` propagate the change immediately — without
+`compose update` or per-package update commands. Only fragments retain the
+snapshot mechanism.
 
 ## Data Flow
 
@@ -63,8 +76,10 @@ approach:
 User → /speckit.charter.config
   ├── Select registry (path or git URL)
   ├── Validate registry (manifest.yml check)
-  ├── List fragments (mandatory/recommended/optional)
-  ├── User selects fragments
+  ├── Detect distributed sub-constitutions + enable/disable feature
+  ├── List fragments (mandatory/recommended/optional) + sub-constitutions
+  │     + distributed sub-constitutions (when enabled)
+  ├── User selects items
   ├── Show composition summary
   └── Save state.yml
 ```
@@ -81,9 +96,9 @@ User → /speckit.charter.compose
   │       ├── Compare sections vs snapshots
   │       └── Warn about modifications
   ├── Resolve content sources
-  │   ├── Creation/Update → Registry
-  │   └── Recreation → Snapshots (registry fallback)
-  ├── Save snapshots
+  │   ├── Fragments: Creation/Update → Registry; Recreation → Snapshots (registry fallback)
+  │   └── Sub-constitutions (registry + distributed) → always fresh (cacheless)
+  ├── Save snapshots (fragments only)
   ├── Build prompt with section markers
   ├── Invoke /speckit.constitution
   └── Validate output
@@ -106,21 +121,19 @@ All Charter data lives under `.specify/charter/`:
 
 ```
 .specify/charter/
-├── config.yml                   # Registry location and type
-├── state.yml                    # Selected fragments + local constitution
+├── config.yml                   # Registry location/type + distributed_sub_constitutions flag
+├── state.yml                    # Selected fragments, sub-constitutions, distributed sub-constitutions, local constitution
 ├── .gitignore                   # Excludes .cache/ from version control
 ├── .cache/
 │   └── registry/                # Cloned git registry (if git-based)
-├── snapshots/                   # Saved fragment versions
-│   ├── fragment/
-│   │   ├── global/
-│   │   │   ├── compliance.md
-│   │   │   └── code-quality.md
-│   │   └── languages/
-│   │       └── typescript/
-│   │           └── standards.md
-│   └── sub-constitution/
-│       └── package-auth.md
+├── snapshots/                   # Saved fragment versions (fragments only — sub-constitutions are cacheless)
+│   └── fragment/
+│       ├── global/
+│       │   ├── compliance.md
+│       │   └── code-quality.md
+│       └── languages/
+│           └── typescript/
+│               └── standards.md
 └── backups/                     # Constitution backups
     ├── constitution-20260630-143022.md.backup
     └── constitution-20260630-150105.md.backup
@@ -189,9 +202,45 @@ Charter is aware of this metadata and:
 - Ignores it during section extraction and comparison
 - Lets `/speckit.constitution` manage it autonomously
 
+## Distributed Sub-Constitutions
+
+Distributed sub-constitutions target monorepos where each package maintains its
+own rules in-tree, at `<package>/.charter/constitution.md`.
+
+### Detection
+
+`distributed-detect.sh` recursively searches from the project root (up to 5
+package-directory levels) for files matching `*/.charter/constitution.md`. It
+prunes `.git`, `node_modules`, and `.specify`, and skips the root itself. Each
+match yields a package path (the directory containing the `.charter` folder),
+e.g. `packages/back`.
+
+### Why the `.charter/constitution.md` convention?
+
+Detection only matches files inside a `.charter` folder. This deliberately
+avoids a package's own Spec Kit constitution
+(`<package>/.specify/memory/constitution.md`) and any bare
+`<package>/constitution.md`. The reasons:
+
+- **No conflicting usage** — a monorepo may use Spec Kit at the root *and* inside
+  individual packages (e.g. submodules that each use Spec Kit). Reading the
+  package Spec Kit constitution would risk duplicating fragment content already
+  composed at the root.
+- **Future-proofing** — it avoids coupling Charter to the internal format and
+  evolution of the Spec Kit constitution file.
+
+### Opt-in and cacheless
+
+The feature is opt-in via the `distributed_sub_constitutions` flag in
+`config.yml` (default `false`), set during configuration. Selected package paths
+are stored in the `distributed_sub_constitutions` list in `state.yml`. Content is
+read fresh via `distributed-read.sh` on every compose (cacheless), so it never
+goes through the snapshot store.
+
 ## Limitations
 
 - Fragment content is included verbatim — no variable substitution or templating
 - The 32 KiB warning is advisory — Charter does not enforce a size limit
 - Sub-constitutions use a name-based scoping prefix, not directory-based
-- Snapshot comparison is exact string match — formatting changes are detected as modifications
+- Snapshot comparison (fragments only) is exact string match — formatting changes are detected as modifications
+- Distributed sub-constitutions are detected up to 5 package-directory levels deep

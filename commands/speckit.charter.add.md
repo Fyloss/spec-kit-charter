@@ -12,7 +12,7 @@ Add a new fragment or sub-constitution from the registry to the current composit
 
 $ARGUMENTS
 
-The argument MAY be the name of a fragment or sub-constitution to add (e.g., `global/code-quality`, `package-auth`). If not provided, the user will be asked to select from available options.
+The argument MAY be the name of a fragment, registry sub-constitution, or distributed sub-constitution to add (e.g., `global/code-quality`, `package-auth`, `packages/back`). If not provided, the user will be asked to select from available options.
 
 ## Prerequisites
 
@@ -42,35 +42,48 @@ echo "=== ALL REGISTRY FRAGMENTS & SUB-CONSTITUTIONS ==="
 # Tab-separated: TYPE<TAB>CATEGORY<TAB>PATH<TAB>NAME
 # TYPE = mandatory_fragment | recommended_fragment | fragment | sub-constitution
 bash .specify/extensions/charter/scripts/bash/fragment-list.sh "$(pwd)"
+
+echo "=== DISTRIBUTED SUB-CONSTITUTIONS (only relevant when enabled) ==="
+# One package path per line (e.g. packages/back)
+bash .specify/extensions/charter/scripts/bash/distributed-detect.sh "$(pwd)"
 ```
 
-The currently selected fragments and sub-constitutions were already printed by
-`state-check.sh` in Step 1 (the `fragments:` and `sub_constitutions:` lists in
-the state).
+The currently selected fragments, sub-constitutions, and distributed
+sub-constitutions were already printed by `state-check.sh` in Step 1 (the
+`fragments:`, `sub_constitutions:`, and `distributed_sub_constitutions:` lists in
+the state). Distributed sub-constitutions are only offered when
+`distributed_sub_constitutions` is `true` in the config.
 
 ### Step 3: Present Available (Not Yet Selected) Fragments
 
-From the output of Step 2, compute the **difference** between all registry items and currently selected items. Only items NOT already in the state are available for addition.
+From the output of Step 2, compute the **difference** between all available items and currently selected items. Only items NOT already in the state are available for addition.
 
-Build a numbered selection list of available items:
+Build a numbered selection list of available items, tagged by source (`|R|`
+registry, `|L|` local):
 
 ```
-Available fragments to add:
+Available items to add:
 [FRAGMENTS]
-1. global/security
-2. domains/finance/regulations
-3. languages/python/style
+1. |R| global/security
+2. |R| domains/finance/regulations
+3. |R| languages/python/style
 [SUB-CONSTITUTIONS]
-4. package-monitoring
-5. package-logging
+4. |R| package-monitoring
+5. |R| package-logging
+6. |L| packages/back (detected)
+
+Sources:
+[R]: Registry
+[L]: Local
 ```
 
 **Rules:**
-- Only show items that are NOT already in the state file (neither in `fragments` nor `sub_constitutions` lists)
+- Only show items that are NOT already in the state file (neither in `fragments`, `sub_constitutions`, nor `distributed_sub_constitutions` lists)
 - Number sequentially starting at 1
-- Group by type: fragments first, then sub-constitutions
+- Group by type: fragments first, then sub-constitutions (registry `|R|` then distributed `|L|`)
+- Distributed sub-constitutions appear only when the feature is enabled
 
-If the argument already specifies a valid fragment name that is NOT in the current state, skip the selection list and use that name directly.
+If the argument already specifies a valid name that is NOT in the current state, skip the selection list and use that name directly. A distributed sub-constitution is referenced by its package path (e.g. `packages/back`).
 
 If the argument specifies a name that is ALREADY in the state, display:
 
@@ -78,6 +91,7 @@ If the argument specifies a name that is ALREADY in the state, display:
 ❌ ERROR: "<NAME>" is already in the current composition.
 Current fragments: <list>
 Current sub-constitutions: <list>
+Current distributed sub-constitutions: <list>
 ```
 
 If no items are available (all registry items are already selected), display:
@@ -111,19 +125,20 @@ Current composition order:
 1. global/compliance (fragment)
 2. global/code-quality (fragment)
 3. languages/typescript/standards (fragment)
-4. package-auth (sub-constitution)
-5. <CURRENT PROJECT CONSTITUTION>
+4. package-auth (registry sub-constitution)
+5. packages/back (distributed sub-constitution)
+6. <CURRENT PROJECT CONSTITUTION>
 
-Where should "<NEW_FRAGMENT>" be placed?
+Where should "<NEW_ITEM>" be placed?
 (Examples: "after 2", "before 3", "between 1 and 2", "at the end", "after global/code-quality")
 Default: at the end (before local constitution if present)
 ```
 
 **Rules for the position display:**
 - Show all fragments in order from the state file, numbered sequentially
-- Show all sub-constitutions after fragments, continuing the numbering
+- Show all registry sub-constitutions, then distributed sub-constitutions, after fragments, continuing the numbering
 - If `local_constitution: true`, show `<CURRENT PROJECT CONSTITUTION>` as the last item
-- The local constitution is ALWAYS the last section — the new fragment cannot be placed after it
+- The local constitution is ALWAYS the last section — the new item cannot be placed after it
 
 **Parse the user's position response:**
 - `"after N"` or `"after <name>"` — insert after position N or after the named item
@@ -140,36 +155,44 @@ Default: at the end (before local constitution if present)
 
 **Position resolution logic:**
 - Fragments are inserted into the `fragments` list in state.yml
-- Sub-constitutions are inserted into the `sub_constitutions` list in state.yml
-- The position number maps to the combined ordered list (fragments then sub-constitutions)
+- Registry sub-constitutions are inserted into the `sub_constitutions` list in state.yml
+- Distributed sub-constitutions are inserted into the `distributed_sub_constitutions` list in state.yml
+- The position number maps to the combined ordered list (fragments, then registry sub-constitutions, then distributed sub-constitutions)
 - When inserting a fragment, compute the index within the `fragments` array
-- When inserting a sub-constitution, compute the index within the `sub_constitutions` array
+- When inserting a registry sub-constitution, compute the index within the `sub_constitutions` array
+- When inserting a distributed sub-constitution, compute the index within the `distributed_sub_constitutions` array
 
 ### Step 6: Update State File
 
-Add the new fragment/sub-constitution to the state file at the determined position.
+Add the new item to the state file at the determined position.
 
 1. Read the current state
-2. Insert the new item at the correct position in the appropriate list (`fragments` or `sub_constitutions`)
+2. Insert the new item at the correct position in the appropriate list (`fragments`, `sub_constitutions`, or `distributed_sub_constitutions`)
 3. Write the updated state back
 
 Write the updated YAML to `.specify/charter/state.yml`.
 
-### Step 7: Fetch and Save Snapshot
+### Step 7: Fetch and Save Snapshot (fragments only)
 
-Fetch the fragment content from the registry and save a snapshot. The type
-(`fragment` or `sub-constitution`) is known from the selection made in the
-previous steps. `snapshot-save.sh` copies the registry version into the snapshot
-store, and `fragment-read.sh` prints the content to embed:
+Only **fragments** are snapshotted. Registry sub-constitutions and distributed
+sub-constitutions are cacheless — do NOT save snapshots for them; their content
+is re-read fresh during composition.
 
 ```bash
-FRAG_NAME="<NEW_FRAGMENT_NAME>"
-TYPE="<TYPE>"   # fragment | sub-constitution
+FRAG_NAME="<NEW_ITEM_NAME>"
+TYPE="<TYPE>"   # fragment | sub-constitution | distributed
 
-bash .specify/extensions/charter/scripts/bash/snapshot-save.sh "$FRAG_NAME" "$TYPE" "$(pwd)"
-
-echo "CONTENT:"
-bash .specify/extensions/charter/scripts/bash/fragment-read.sh "$FRAG_NAME" "$TYPE" "$(pwd)"
+if [[ "$TYPE" == "fragment" ]]; then
+  bash .specify/extensions/charter/scripts/bash/snapshot-save.sh "$FRAG_NAME" "fragment" "$(pwd)"
+  echo "CONTENT:"
+  bash .specify/extensions/charter/scripts/bash/fragment-read.sh "$FRAG_NAME" "fragment" "$(pwd)"
+elif [[ "$TYPE" == "sub-constitution" ]]; then
+  echo "CONTENT (cacheless — read fresh at compose):"
+  bash .specify/extensions/charter/scripts/bash/fragment-read.sh "$FRAG_NAME" "sub-constitution" "$(pwd)"
+else # distributed
+  echo "CONTENT (cacheless — read fresh at compose):"
+  bash .specify/extensions/charter/scripts/bash/distributed-read.sh "$FRAG_NAME" "$(pwd)"
+fi
 ```
 
 ### Step 8: Recompose Constitution
@@ -193,8 +216,10 @@ Current composition:
 
 ## Notes
 
-- Adding a fragment updates both the state file and the actual constitution (via recomposition)
+- Adding an item updates both the state file and the actual constitution (via recomposition)
 - The local constitution is always the last section — new items are placed before it by default
-- If the fragment is already in the composition, the command refuses and suggests using `/speckit.charter.compose update <name>` instead
+- If the item is already in the composition, the command refuses and suggests using `/speckit.charter.compose update <name>` instead (only relevant for fragments; sub-constitutions are always refreshed on compose)
+- Distributed sub-constitutions (package paths like `packages/back`) can be added only when the feature is enabled in the config
+- Fragments are snapshotted; registry and distributed sub-constitutions are cacheless and read fresh at compose time
 - A backup of the previous constitution is created automatically during recomposition
-- The position is determined by the combined order of fragments + sub-constitutions in the state file
+- The position is determined by the combined order of fragments + registry sub-constitutions + distributed sub-constitutions in the state file

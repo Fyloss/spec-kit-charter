@@ -2,8 +2,12 @@
 # snapshot-detect-modified.sh — Detect sections modified since last composition
 # Usage: snapshot-detect-modified.sh [PROJECT_ROOT]
 #
-# Reads the fragment and sub-constitution lists from state.yml and compares each
-# section in the current constitution against its saved snapshot.
+# Reads the fragment list from state.yml and compares each fragment section in
+# the current constitution against its saved snapshot.
+#
+# NOTE: Only fragments are snapshotted. Sub-constitutions (registry and
+# distributed) are cacheless — they are re-read fresh on every compose — so they
+# are never reported here as "modified".
 # Output:
 #   MODIFIED=true
 #   MODIFIED_SECTION=<name>   (one line per modified section)
@@ -34,11 +38,6 @@ while IFS= read -r frag; do
   [[ -z "$frag" ]] && continue
   check "$frag" "fragment"
 done < <(yaml_list "$CHARTER_STATE" "fragments")
-
-while IFS= read -r sub; do
-  [[ -z "$sub" ]] && continue
-  check "$sub" "sub-constitution"
-done < <(yaml_list "$CHARTER_STATE" "sub_constitutions")
 
 if [[ ${#modified[@]} -gt 0 ]]; then
   echo "MODIFIED=true"

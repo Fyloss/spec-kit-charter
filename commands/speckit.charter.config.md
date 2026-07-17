@@ -62,17 +62,69 @@ prints the error to stderr and exits non-zero.
 
 **If validation fails**: Display the error message to the user and invite them to re-run `/speckit.charter.config` with a valid registry. **Stop execution here.**
 
-**If validation succeeds**: Proceed to Step 3.
+**If validation succeeds**: Proceed to Step 2b.
+
+### Step 2b: Detect Distributed Sub-Constitutions (monorepo)
+
+Distributed sub-constitutions let each package in a monorepo own its rules in a
+`<package>/.charter/constitution.md` file (see the Notes section). Detect them
+and let the user enable the feature.
+
+1. Search for distributed sub-constitutions (recursive, up to 5 package levels):
+
+```bash
+bash .specify/extensions/charter/scripts/bash/distributed-detect.sh "$(pwd)"
+```
+
+Each output line is a package path (the directory containing a `.charter/constitution.md`), relative to the project root.
+
+2. **If one or more were found**, display them:
+
+```
+Distributed sub-constitutions found:
+  packages/front
+  packages/back
+```
+
+If none were found, do not display the list.
+
+3. **In all cases** (found or not), ask the user whether to enable distributed
+   sub-constitutions:
+
+```
+Enable distributed sub-constitutions? (yes/no) [default: no]
+```
+
+4. Persist the choice in the config:
+   - If the user answers **yes**:
+
+```bash
+bash .specify/extensions/charter/scripts/bash/config-distributed-set.sh true "$(pwd)"
+```
+
+   - If the user answers **no** (or presses Enter for the default):
+
+```bash
+bash .specify/extensions/charter/scripts/bash/config-distributed-set.sh false "$(pwd)"
+```
+
+The flag is stored as `distributed_sub_constitutions` in
+`.specify/charter/config.yml` (default `false`).
 
 ### Step 3: List Available Fragments
 
-Enumerate all available fragments and sub-constitutions, and detect any existing
-local constitution.
+Enumerate all available fragments and sub-constitutions, detect any existing
+local constitution, and — when distributed sub-constitutions are enabled —
+detect the distributed sub-constitutions.
 
 ```bash
 # Fragments + sub-constitutions, tab-separated: TYPE<TAB>CATEGORY<TAB>PATH<TAB>NAME
 # TYPE is one of: mandatory_fragment | recommended_fragment | fragment | sub-constitution
 bash .specify/extensions/charter/scripts/bash/fragment-list.sh "$(pwd)"
+
+# Distributed sub-constitutions (only relevant when the feature is enabled).
+# One package path per line.
+bash .specify/extensions/charter/scripts/bash/distributed-detect.sh "$(pwd)"
 
 # Detect an existing local constitution.
 # Exit code: 0 = placeholder (skip), 1 = usable constitution, 2 = no file.
@@ -84,6 +136,8 @@ echo "placeholder_check_exit=$?"
 `TYPE` column (read from the registry `manifest.yml`), so no separate manifest
 parsing is needed. Treat the local constitution as selectable only when
 `constitution-is-placeholder.sh` exits with code `1` (usable, not a placeholder).
+Include distributed sub-constitutions in the selection list **only when
+`distributed_sub_constitutions` is `true`** in the config.
 
 ### Step 4: Present Selection List
 
@@ -92,42 +146,58 @@ Using the data from Step 3, build and present a numbered selection list to the u
 **Use the `TYPE` column** from `fragment-list.sh` to identify mandatory and
 recommended fragments (no separate manifest parsing needed).
 
+**Source tags** — every selectable item is prefixed with its source:
+- `|R|` — comes from the **Registry** (fragments and registry sub-constitutions)
+- `|L|` — comes **Locally** from the project (distributed sub-constitutions and
+  the current project constitution)
+
 **Build the selection list** in this exact order:
 
 ```
 [FRAGMENTS]
-<mandatory fragments — NO number, marked (MANDATORY)>
-<recommended fragments — numbered, marked (RECOMMENDED)>
-<regular fragments — numbered>
+<mandatory fragments — NO number, |R|, marked (MANDATORY)>
+<recommended fragments — numbered, |R|, marked (RECOMMENDED)>
+<regular fragments — numbered, |R|>
 [SUB-CONSTITUTIONS]
-<sub-constitutions — numbered>
-<CURRENT PROJECT CONSTITUTION — numbered, only if constitution.md exists>
+<registry sub-constitutions — numbered, |R|>
+<distributed sub-constitutions — numbered, |L|, marked (detected)>   ← only if enabled
+[OTHER]
+<CURRENT PROJECT CONSTITUTION — numbered, |L|, only if a usable constitution exists>
 ```
 
 **Rules:**
-- **Mandatory fragments** are listed first WITHOUT a number and marked `(MANDATORY)`. They are always included — the user cannot deselect them.
-- **Recommended fragments** are listed next WITH numbers and marked `(RECOMMENDED)`. They are selectable.
-- **Regular fragments** are listed after recommended, WITH numbers.
-- **Sub-constitutions** are listed under a `[SUB-CONSTITUTIONS]` header, WITH numbers.
-- If a **local constitution** exists AND is NOT a placeholder template (see Step 3 — `EXISTS=true`), add it at the end as `<CURRENT PROJECT CONSTITUTION>` WITH a number. It is selectable.
+- **Mandatory fragments** are listed first WITHOUT a number, tagged `|R|`, and marked `(MANDATORY)`. They are always included — the user cannot deselect them.
+- **Recommended fragments** are listed next WITH numbers, tagged `|R|`, and marked `(RECOMMENDED)`. They are selectable.
+- **Regular fragments** are listed after recommended, WITH numbers, tagged `|R|`.
+- **Registry sub-constitutions** are listed under a `[SUB-CONSTITUTIONS]` header, WITH numbers, tagged `|R|`.
+- **Distributed sub-constitutions** (only when `distributed_sub_constitutions` is enabled) are listed right after the registry sub-constitutions, WITH numbers, tagged `|L|`, and marked `(detected)`. Their name is the package path (e.g. `packages/back`).
+- If a **local constitution** exists AND is NOT a placeholder template (see Step 3), add it under an `[OTHER]` header as `<CURRENT PROJECT CONSTITUTION>` WITH a number, tagged `|L|`. It is selectable.
 - A constitution is considered a placeholder if it contains bracket-style placeholder tokens like `[PROJECT_NAME]`, `[PRINCIPLE_1_NAME]`, `[CONSTITUTION_VERSION]`, etc. Placeholder files are NOT offered in the selection list.
-- Numbering is sequential starting at 1, across all selectable items (recommended, regular fragments, sub-constitutions, and current constitution share the same numbering).
+- Numbering is sequential starting at 1, across all selectable items (recommended, regular fragments, registry sub-constitutions, distributed sub-constitutions, and current constitution share the same numbering).
+- Always print the `Sources:` legend at the bottom.
 
 **Example output to show the user:**
 
 ```
 [FRAGMENTS]
-  (MANDATORY) global/compliance
-  (MANDATORY) global/security
-1. (RECOMMENDED) global/code-quality
-2. (RECOMMENDED) languages/typescript/standards
-3. domains/finance/regulations
-4. domains/ecommerce/checkout
-5. languages/python/style
+   |R| (MANDATORY) global/compliance
+   |R| (MANDATORY) global/security
+1. |R| (RECOMMENDED) global/code-quality
+2. |R| (RECOMMENDED) languages/typescript/standards
+3. |R| domains/finance/regulations
+4. |R| domains/ecommerce/checkout
+5. |R| languages/python/style
 [SUB-CONSTITUTIONS]
-6. package-auth
-7. package-api
-8. <CURRENT PROJECT CONSTITUTION>
+6. |R| package-auth
+7. |R| package-api
+8. |L| packages/front (detected)
+9. |L| packages/back (detected)
+[OTHER]
+10. |L| <CURRENT PROJECT CONSTITUTION>
+
+Sources:
+[R]: Registry
+[L]: Local
 ```
 
 ### Step 5: Collect User Selection
@@ -140,7 +210,7 @@ Ask the user to select items by number. Accepted formats:
 
 Parse the user's selection and combine with mandatory fragments to build the complete section list.
 
-**CRITICAL**: Only items whose numbers appear in the user's selection are included. If `<CURRENT PROJECT CONSTITUTION>` has number N and N is NOT in the user's selection, it must NOT be included in the composition. The same applies to any fragment or sub-constitution — only selected numbers are included.
+**CRITICAL**: Only items whose numbers appear in the user's selection are included. If `<CURRENT PROJECT CONSTITUTION>` has number N and N is NOT in the user's selection, it must NOT be included in the composition. The same applies to any fragment, sub-constitution, or distributed sub-constitution — only selected numbers are included.
 
 ### Step 6: Save Composition State
 
@@ -162,10 +232,18 @@ sub_constitutions:
   - "<sub_constitution_name_1>"
   - "<sub_constitution_name_2>"
 
+distributed_sub_constitutions:
+  - "<package_path_1>"
+  - "<package_path_2>"
+
 local_constitution: true  # or false
 local_constitution_content: |
   <LOCAL CONSTITUTION CONTENT WITHOUT SPECKIT METADATA>
 ```
+
+**Rules for the lists:**
+- `sub_constitutions` holds the selected **registry** sub-constitutions (names without `.md`).
+- `distributed_sub_constitutions` holds the selected **distributed** sub-constitutions (package paths, e.g. `packages/back`). Include this list only when the feature is enabled and the user selected one or more; otherwise write it as an empty list (`distributed_sub_constitutions: []`) or omit it.
 
 **Rules for `local_constitution_content`:**
 - Only present if `local_constitution: true` (the user selected
@@ -205,22 +283,35 @@ Display the summary in this format:
 
 ```
 ========= FINAL PROJECT CONSTITUTION =========
-------- COMPOSED --------------
-FRAGMENT <fragment_name_1>
-FRAGMENT <fragment_name_2>
-SUB-CONSTITUTION <sub_constitution_name_1>
-<...>
-------- PROJECT SPECIFIC ------
-<CURRENT PROJECT CONSTITUTION>
+[FRAGMENT] |R| <fragment_name_1>
+[FRAGMENT] |R| <fragment_name_2>
+[SUB-CONSTITUTION] |R| <sub_constitution_name_1>
+[SUB-CONSTITUTION] |L| <package_path_1>
+[OTHER] |L| <CURRENT PROJECT CONSTITUTION>
 ===============================================
+
+Sources:
+[R]: Registry
+[L]: Local
 ```
 
 **Rules for the summary:**
-- The `------- PROJECT SPECIFIC ------` section and `<CURRENT PROJECT CONSTITUTION>` line are ONLY shown if the user's numbered selection explicitly includes the number assigned to `<CURRENT PROJECT CONSTITUTION>`. If the user did NOT select that number, this section MUST NOT appear in the summary.
-- Similarly, each FRAGMENT and SUB-CONSTITUTION line appears ONLY if the user's selection includes its number. Mandatory fragments are always included regardless of selection.
-- Do NOT show the content of the constitution — only the label `<CURRENT PROJECT CONSTITUTION>`.
-- Each FRAGMENT line shows the fragment name as it appears in the registry (path without `.md`).
-- Each SUB-CONSTITUTION line shows the sub-constitution name.
+- Each line is tagged with its source: `|R|` for registry items (fragments and
+  registry sub-constitutions) and `|L|` for local items (distributed
+  sub-constitutions and the current project constitution).
+- `[FRAGMENT]` lines list the selected fragments (mandatory fragments always
+  appear; other fragments appear only if their number was selected).
+- `[SUB-CONSTITUTION]` lines list selected registry sub-constitutions (`|R|`)
+  and selected distributed sub-constitutions (`|L|`, shown by package path).
+- The `[OTHER] |L| <CURRENT PROJECT CONSTITUTION>` line is shown ONLY if the user
+  selected the number assigned to `<CURRENT PROJECT CONSTITUTION>`. If not
+  selected, this line MUST NOT appear.
+- Do NOT show the content of the constitution — only the labels.
+- Each `[FRAGMENT]` line shows the fragment name as it appears in the registry
+  (path without `.md`). Each registry `[SUB-CONSTITUTION]` line shows the
+  sub-constitution name; each distributed `[SUB-CONSTITUTION]` line shows the
+  package path.
+- Always print the `Sources:` legend at the bottom.
 
 **Size warning:** If `EXCEEDS_32K=true`, add this warning:
 
@@ -247,3 +338,23 @@ After saving the state, display:
 - Sub-constitution names correspond to their file paths within the registry's `sub-constitutions/` directory, without the `.md` extension.
 - Git registries are cloned/fetched into `.specify/charter/.cache/registry/` and use the default branch.
 - Git authentication uses the local system credentials (SSH keys, credential helpers) — no additional authentication is required.
+
+### Distributed sub-constitutions (monorepos)
+
+- Distributed sub-constitutions are for **monorepos** where each package keeps
+  its own rules next to its code, in a `<package>/.charter/constitution.md` file.
+- They differ from **registry sub-constitutions**, which live centrally in the
+  registry's `sub-constitutions/` directory. Use registry sub-constitutions when
+  you prefer NOT to store package rules inside the packages; use distributed
+  sub-constitutions when package owners should maintain their own rules in-tree.
+- Detection only matches files inside a `.charter` folder
+  (`<package>/.charter/constitution.md`). This deliberately ignores a package's
+  own Spec Kit constitution (e.g. `<package>/.specify/memory/constitution.md`)
+  to avoid conflicts when Spec Kit is used both at the monorepo root and inside
+  individual packages, and to avoid interfering with future evolution of the
+  Spec Kit constitution file.
+- The name of a distributed sub-constitution is its package path relative to the
+  project root (e.g. `packages/back`).
+- Distributed (and registry) sub-constitutions are **cacheless**: their latest
+  on-disk content is read on every `/speckit.charter.compose`, so package owners
+  can update rules without any snapshot/update step.

@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Distributed sub-constitutions** for monorepos. Charter can now detect
+  `<package>/.charter/constitution.md` files in monorepo packages (recursive, up
+  to 5 package levels) during configuration and offer them for selection. The
+  feature is opt-in via the `distributed_sub_constitutions` flag in `config.yml`
+  (default `false`); selected package paths are stored in the
+  `distributed_sub_constitutions` list in `state.yml`. Each selected package is
+  composed as a scoped section keyed by its package path
+  (`<!-- [packages/back] SECTION -->` + `WHEN WORKING ON packages/back, ...`).
+  Detection only matches files inside a `.charter` folder, deliberately ignoring
+  a package's own Spec Kit constitution
+  (`<package>/.specify/memory/constitution.md`) to avoid conflicts when Spec Kit
+  is used both at the monorepo root and inside packages.
+- `/speckit.charter.add` and `/speckit.charter.remove` now support distributed
+  sub-constitutions (referenced by package path, e.g. `packages/back`).
+- New scripts: `distributed-detect.sh`, `distributed-read.sh`, and
+  `config-distributed-set.sh`.
 - `/speckit.charter.compose` now runs an inline configuration flow when no
   charter configuration exists yet (`.specify/charter/state.yml` missing).
   Instead of erroring out, it prompts for the registry value and the fragment
@@ -19,6 +35,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Sub-constitutions are now cacheless.** Registry sub-constitutions and
+  distributed sub-constitutions are re-read fresh from their source on every
+  `/speckit.charter.compose`, so a plain compose refreshes all of them without an
+  `update` step. Only fragments retain the snapshot / change-detection mechanism.
+- The fragment selection list and composition summary now tag every item by
+  source: `|R|` (registry) and `|L|` (local). The current project constitution is
+  now grouped under `[OTHER]` and tagged `|L|`.
+- The composition summary no longer uses the `------- COMPOSED -------` /
+  `------- PROJECT SPECIFIC ------` separators; it lists each item as
+  `[FRAGMENT] |R| <name>`, `[SUB-CONSTITUTION] |R|/|L| <name>`, or
+  `[OTHER] |L| <CURRENT PROJECT CONSTITUTION>`, followed by a source legend.
+- `config.yml` now includes the `distributed_sub_constitutions` flag; it is
+  preserved across registry changes.
 - `/speckit.charter.config` no longer asks for a yes/no/cancel confirmation
   after the composition summary. It now only requests the registry value and the
   fragment selection; the summary is shown for information and the configuration

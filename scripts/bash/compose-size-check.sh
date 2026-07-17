@@ -41,6 +41,16 @@ while IFS= read -r sub; do
   fi
 done < <(yaml_list "$CHARTER_STATE" "sub_constitutions")
 
+# Read distributed sub-constitutions from state (local package files)
+while IFS= read -r dist; do
+  [[ -z "$dist" ]] && continue
+  dist_file="${PROJECT_ROOT}/${dist}/.charter/constitution.md"
+  if [[ -f "$dist_file" ]]; then
+    size=$(wc -c < "$dist_file")
+    total_bytes=$((total_bytes + size))
+  fi
+done < <(yaml_list "$CHARTER_STATE" "distributed_sub_constitutions")
+
 # Check local constitution
 has_local="$(yaml_field "$CHARTER_STATE" "local_constitution")"
 if [[ "$has_local" == "true" ]]; then
@@ -55,6 +65,7 @@ fi
 section_count=0
 section_count=$((section_count + $(yaml_list "$CHARTER_STATE" "fragments" | wc -l)))
 section_count=$((section_count + $(yaml_list "$CHARTER_STATE" "sub_constitutions" | wc -l)))
+section_count=$((section_count + $(yaml_list "$CHARTER_STATE" "distributed_sub_constitutions" | wc -l)))
 [[ "$has_local" == "true" ]] && section_count=$((section_count + 1))
 total_bytes=$((total_bytes + section_count * 100))
 
