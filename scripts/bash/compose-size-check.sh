@@ -44,6 +44,7 @@ done < <(yaml_list "$CHARTER_STATE" "sub_constitutions")
 # Read distributed sub-constitutions from state (local package files)
 while IFS= read -r dist; do
   [[ -z "$dist" ]] && continue
+  validate_package_path "$dist"
   dist_file="${PROJECT_ROOT}/${dist}/.charter/constitution.md"
   if [[ -f "$dist_file" ]]; then
     size=$(wc -c < "$dist_file")

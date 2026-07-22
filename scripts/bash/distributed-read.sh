@@ -15,6 +15,8 @@ PACKAGE_PATH="${1:?Usage: distributed-read.sh <PACKAGE_PATH> [PROJECT_ROOT]}"
 PROJECT_ROOT="${2:-.}"
 source "${SCRIPT_DIR}/charter-common.sh"
 
+validate_package_path "$PACKAGE_PATH"
+
 FILE="${PROJECT_ROOT}/${PACKAGE_PATH}/.charter/constitution.md"
 
 if [[ ! -f "$FILE" ]]; then

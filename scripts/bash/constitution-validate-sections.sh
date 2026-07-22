@@ -39,6 +39,7 @@ done < <(yaml_list "$CHARTER_STATE" "sub_constitutions")
 
 while IFS= read -r dist; do
   [[ -z "$dist" ]] && continue
+  validate_package_path "$dist"
   expected+=("$dist")
 done < <(yaml_list "$CHARTER_STATE" "distributed_sub_constitutions")
 

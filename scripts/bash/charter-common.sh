@@ -63,6 +63,17 @@ GITIGNORE
   fi
 }
 
+# Validate a package path to prevent path traversal attacks
+# Rejects absolute paths and paths containing ".."
+# Usage: validate_package_path "<PACKAGE_PATH>"
+# Returns 0 if valid, dies with error if invalid
+validate_package_path() {
+  local path="$1"
+  if [[ "$path" == /* || "$path" == *..* ]]; then
+    die "Invalid package path: $path (absolute paths and '..' traversal not allowed)"
+  fi
+}
+
 # Check if a value looks like a git URL
 is_git_url() {
   local val="$1"
