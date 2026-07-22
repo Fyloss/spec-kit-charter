@@ -36,7 +36,7 @@ Charter introduces a **registry-based composition model** for constitutions:
 specify extension add charter
 
 # From GitHub release
-specify extension add charter --from https://github.com/Fyloss/spec-kit-charter/archive/refs/tags/v0.4.0.zip
+specify extension add charter --from https://github.com/Fyloss/spec-kit-charter/archive/refs/tags/v0.4.1.zip
 ```
 
 ## Quick Start
