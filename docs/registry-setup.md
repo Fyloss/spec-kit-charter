@@ -131,6 +131,26 @@ package.
 The file name (without `.md`) becomes the sub-constitution name used in the
 selection list and section markers.
 
+### Registry vs. distributed sub-constitutions
+
+Charter supports two kinds of sub-constitutions for monorepos:
+
+| | Registry sub-constitution | Distributed sub-constitution |
+|---|---|---|
+| **Location** | `sub-constitutions/<name>.md` in the registry | `<package>/.charter/constitution.md` in the package |
+| **Owner** | Registry maintainers | Package owners (in-tree) |
+| **Name** | File name (e.g. `package-auth`) | Package path (e.g. `packages/back`) |
+| **Enabled** | Always available | Opt-in flag `distributed_sub_constitutions` |
+| **Caching** | Cacheless — read fresh each compose | Cacheless — read fresh each compose |
+
+Use **registry** sub-constitutions when you prefer to keep package rules
+centralized in the registry. Use **distributed** sub-constitutions when package
+owners should maintain their own rules alongside their code. Both render
+identically in the final constitution (a `WHEN WORKING ON <name>, ...` scoped
+section) and both always reflect their latest on-disk content. Distributed
+sub-constitutions are configured per project (see the Usage Guide), not in the
+registry.
+
 ## Hosting
 
 ### Local Directory

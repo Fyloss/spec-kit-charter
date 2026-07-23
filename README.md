@@ -22,7 +22,7 @@ Charter introduces a **registry-based composition model** for constitutions:
 2. **Select fragments** per project — mandatory, recommended, and optional
 3. **Compose** a final constitution by assembling selected fragments + project-specific rules
 4. **Track changes** — detect when fragments are modified locally vs. updated in the registry
-5. **Support monorepos** — sub-constitutions scope rules to specific packages
+5. **Support monorepos** — scope rules to packages via central registry sub-constitutions or in-tree distributed sub-constitutions
 
 
 <p align="center" style="margin-top: 30px">
@@ -36,7 +36,7 @@ Charter introduces a **registry-based composition model** for constitutions:
 specify extension add charter
 
 # From GitHub release
-specify extension add charter --from https://github.com/Fyloss/spec-kit-charter/archive/refs/tags/v0.3.1.zip
+specify extension add charter --from https://github.com/Fyloss/spec-kit-charter/archive/refs/tags/v0.4.1.zip
 ```
 
 ## Quick Start
@@ -191,16 +191,68 @@ These markers enable:
 
 ## Monorepo Support
 
-Sub-constitutions in the registry's `sub-constitutions/` directory are designed
-for monorepos. Each sub-constitution is scoped to a specific package with a
-prefix line:
+Charter offers two complementary mechanisms for monorepos:
+
+### 1. Registry sub-constitutions (centralized)
+
+Sub-constitutions in the registry's `sub-constitutions/` directory are scoped to
+a specific package with a prefix line:
 
 ```markdown
 WHEN WORKING ON <package-name>, FOLLOW THESE INSTRUCTIONS:
 ```
 
-This allows the AI agent to apply package-specific rules only when working
-within that package's context.
+Use these when you want package rules stored **centrally in the registry** rather
+than inside the packages.
+
+### 2. Distributed sub-constitutions (in-tree)
+
+Distributed sub-constitutions let each package own its rules **next to its code**,
+in a `<package>/.charter/constitution.md` file:
+
+```
+/                         # monorepo root (Spec Kit installed here)
+├── .specify/
+├── .charter/             # registry (fragments + central sub-constitutions)
+└── packages/
+    ├── front/
+    │   ├── .charter/
+    │   │   └── constitution.md   # front's distributed sub-constitution
+    │   └── ...                   # front's code
+    └── back/
+        ├── .charter/
+        │   └── constitution.md   # back's distributed sub-constitution
+        └── ...                   # back's code
+```
+
+During configuration, Charter recursively scans (up to 5 package levels) for
+`<package>/.charter/constitution.md` files and, once you enable the feature,
+offers them for selection alongside registry fragments. In the composed
+constitution each one becomes a scoped section keyed by its package path:
+
+```markdown
+<!-- [packages/back] SECTION -->
+WHEN WORKING ON packages/back, FOLLOW THESE INSTRUCTIONS:
+<content of packages/back/.charter/constitution.md>
+```
+
+**Why only files inside a `.charter` folder?** Detection deliberately ignores a
+package's own Spec Kit constitution (e.g. `packages/x/.specify/memory/constitution.md`
+or a bare `packages/x/constitution.md`). This avoids conflicts when Spec Kit is
+used both at the monorepo root and inside individual packages (e.g. a monorepo of
+submodules that each use Spec Kit), and avoids interfering with future evolution
+of the Spec Kit constitution file.
+
+Enable distributed sub-constitutions during `/speckit.charter.config` (the flag
+`distributed_sub_constitutions` is stored in `config.yml`, default `false`).
+
+### Cacheless sub-constitutions
+
+Both registry and distributed sub-constitutions are **cacheless**: every
+`/speckit.charter.compose` re-reads their latest on-disk content. Package owners
+can edit their `.charter/constitution.md` and simply re-run
+`/speckit.charter.compose` — no `update` step is needed. Only fragments are
+snapshotted for change detection.
 
 ## Storage Locations
 
@@ -210,8 +262,8 @@ directory that lives **outside** the extension install dir so it survives
 
 | Data | Location | Purpose |
 |------|----------|---------|
-| Config | `.specify/charter/config.yml` | Registry path and type |
-| State | `.specify/charter/state.yml` | Selected fragments and local constitution |
+| Config | `.specify/charter/config.yml` | Registry path/type and the `distributed_sub_constitutions` flag |
+| State | `.specify/charter/state.yml` | Selected fragments, sub-constitutions, distributed sub-constitutions, and local constitution |
 | Snapshots | `.specify/charter/snapshots/` | Saved fragment versions for change detection |
 | Backups | `.specify/charter/backups/` | Constitution backups before recomposition |
 | Registry cache | `.specify/charter/.cache/registry/` | Cloned git registry (gitignored) |

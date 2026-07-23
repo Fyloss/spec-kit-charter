@@ -720,6 +720,173 @@ test_backup_list
 test_backup_preview
 test_backup_restore
 
+# ── Distributed Sub-Constitutions ─────────────────────────────────────────
+
+section "distributed-detect.sh / distributed-read.sh"
+
+setup_distributed() {
+  # Two packages with .charter/constitution.md, plus decoys that must be ignored.
+  mkdir -p "${TMP_DIR}/project/packages/front/.charter"
+  mkdir -p "${TMP_DIR}/project/packages/back/.charter"
+  mkdir -p "${TMP_DIR}/project/packages/back/.specify/memory"
+  echo "front rules" > "${TMP_DIR}/project/packages/front/.charter/constitution.md"
+  echo "back rules"  > "${TMP_DIR}/project/packages/back/.charter/constitution.md"
+  # Decoys: a package's own Spec Kit constitution and a bare constitution.md.
+  echo "speckit constitution" > "${TMP_DIR}/project/packages/back/.specify/memory/constitution.md"
+  echo "bare constitution"    > "${TMP_DIR}/project/packages/back/constitution.md"
+}
+
+test_distributed_detect() {
+  setup
+  setup_distributed
+  local output
+  output="$(bash "${SCRIPTS_DIR}/distributed-detect.sh" "${TMP_DIR}/project" 2>&1)"
+
+  if echo "$output" | grep -qx "packages/front" && echo "$output" | grep -qx "packages/back"; then
+    pass "distributed-detect: finds package .charter/constitution.md files"
+  else
+    fail "distributed-detect: finds package .charter/constitution.md files" "output: $output"
+  fi
+
+  if echo "$output" | grep -q "\.specify"; then
+    fail "distributed-detect: must ignore .specify constitutions" "output: $output"
+  else
+    pass "distributed-detect: ignores .specify constitutions"
+  fi
+
+  # A bare packages/back/constitution.md must NOT create a spurious entry.
+  local count
+  count="$(echo "$output" | grep -c "packages/back" || true)"
+  if [[ "$count" -eq 1 ]]; then
+    pass "distributed-detect: ignores bare package constitution.md"
+  else
+    fail "distributed-detect: ignores bare package constitution.md" "count=$count output: $output"
+  fi
+}
+
+test_distributed_detect_none() {
+  setup
+  local output
+  output="$(bash "${SCRIPTS_DIR}/distributed-detect.sh" "${TMP_DIR}/project" 2>&1)"
+  if [[ -z "$output" ]]; then
+    pass "distributed-detect: no output when none present"
+  else
+    fail "distributed-detect: no output when none present" "output: $output"
+  fi
+}
+
+test_distributed_read() {
+  setup
+  setup_distributed
+  local output
+  output="$(bash "${SCRIPTS_DIR}/distributed-read.sh" "packages/back" "${TMP_DIR}/project" 2>&1)"
+  if echo "$output" | grep -q "back rules"; then
+    pass "distributed-read: reads distributed sub-constitution content"
+  else
+    fail "distributed-read: reads distributed sub-constitution content" "output: $output"
+  fi
+}
+
+test_distributed_detect
+test_distributed_detect_none
+test_distributed_read
+
+# ── Config: Distributed Flag ──────────────────────────────────────────────
+
+section "config-distributed-set.sh / config-write.sh (distributed flag)"
+
+test_config_distributed_set() {
+  setup
+  bash "${SCRIPTS_DIR}/config-write.sh" ".charter" "${TMP_DIR}/project" >/dev/null 2>&1
+
+  # Default flag is false.
+  if grep -q "^distributed_sub_constitutions: false" "${TMP_DIR}/project/.specify/charter/config.yml"; then
+    pass "config-write: writes distributed flag defaulting to false"
+  else
+    fail "config-write: writes distributed flag defaulting to false" \
+      "$(cat "${TMP_DIR}/project/.specify/charter/config.yml")"
+  fi
+
+  # Enable it.
+  bash "${SCRIPTS_DIR}/config-distributed-set.sh" true "${TMP_DIR}/project" >/dev/null 2>&1
+  if grep -q "^distributed_sub_constitutions: true" "${TMP_DIR}/project/.specify/charter/config.yml"; then
+    pass "config-distributed-set: enables distributed flag"
+  else
+    fail "config-distributed-set: enables distributed flag" \
+      "$(cat "${TMP_DIR}/project/.specify/charter/config.yml")"
+  fi
+
+  # Registry is preserved after flipping the flag.
+  if grep -q '^registry: ".charter"' "${TMP_DIR}/project/.specify/charter/config.yml"; then
+    pass "config-distributed-set: preserves registry value"
+  else
+    fail "config-distributed-set: preserves registry value" \
+      "$(cat "${TMP_DIR}/project/.specify/charter/config.yml")"
+  fi
+
+  # A subsequent config-write preserves the enabled flag.
+  bash "${SCRIPTS_DIR}/config-write.sh" ".charter" "${TMP_DIR}/project" >/dev/null 2>&1
+  if grep -q "^distributed_sub_constitutions: true" "${TMP_DIR}/project/.specify/charter/config.yml"; then
+    pass "config-write: preserves the distributed flag across registry changes"
+  else
+    fail "config-write: preserves the distributed flag across registry changes" \
+      "$(cat "${TMP_DIR}/project/.specify/charter/config.yml")"
+  fi
+}
+
+test_config_distributed_set
+
+# ── Validate Sections: Distributed ────────────────────────────────────────
+
+section "constitution-validate-sections.sh (distributed)"
+
+test_validate_distributed_sections() {
+  setup
+  setup_distributed
+  # Build a constitution containing a distributed section marker.
+  cat > "${TMP_DIR}/project/.specify/memory/constitution.md" <<'EOF'
+<!-- [global/compliance] SECTION -->
+Compliance rules.
+
+<!-- [packages/back] SECTION -->
+WHEN WORKING ON packages/back, FOLLOW THESE INSTRUCTIONS:
+back rules
+EOF
+  cat > "${TMP_DIR}/project/.specify/charter/state.yml" <<'EOF'
+fragments:
+  - "global/compliance"
+sub_constitutions: []
+distributed_sub_constitutions:
+  - "packages/back"
+local_constitution: false
+EOF
+  local output rc=0
+  output="$(bash "${SCRIPTS_DIR}/constitution-validate-sections.sh" "${TMP_DIR}/project" 2>&1)" || rc=$?
+  if [[ "$rc" -eq 0 ]] && echo "$output" | grep -q "VALID=true"; then
+    pass "constitution-validate-sections: accepts distributed section"
+  else
+    fail "constitution-validate-sections: accepts distributed section" "rc=$rc output: $output"
+  fi
+
+  # Missing distributed section is reported.
+  cat > "${TMP_DIR}/project/.specify/charter/state.yml" <<'EOF'
+fragments:
+  - "global/compliance"
+distributed_sub_constitutions:
+  - "packages/front"
+local_constitution: false
+EOF
+  rc=0
+  output="$(bash "${SCRIPTS_DIR}/constitution-validate-sections.sh" "${TMP_DIR}/project" 2>&1)" || rc=$?
+  if [[ "$rc" -eq 1 ]] && echo "$output" | grep -q "MISSING=packages/front"; then
+    pass "constitution-validate-sections: reports missing distributed section"
+  else
+    fail "constitution-validate-sections: reports missing distributed section" "rc=$rc output: $output"
+  fi
+}
+
+test_validate_distributed_sections
+
 # ── Summary ───────────────────────────────────────────────────────────────
 
 echo ""

@@ -3,9 +3,9 @@
 # Usage: constitution-validate-sections.sh [PROJECT_ROOT]
 #
 # Expected sections are derived from state.yml (fragments + sub-constitutions +
-# the PROJECT SPECIFIC section when local_constitution is true). Each expected
-# section must have a "<!-- [NAME] SECTION -->" marker in the generated
-# constitution.
+# distributed sub-constitutions + the PROJECT SPECIFIC section when
+# local_constitution is true). Each expected section must have a
+# "<!-- [NAME] SECTION -->" marker in the generated constitution.
 #
 # Output:
 #   VALID=true
@@ -36,6 +36,12 @@ while IFS= read -r sub; do
   [[ -z "$sub" ]] && continue
   expected+=("$sub")
 done < <(yaml_list "$CHARTER_STATE" "sub_constitutions")
+
+while IFS= read -r dist; do
+  [[ -z "$dist" ]] && continue
+  validate_package_path "$dist"
+  expected+=("$dist")
+done < <(yaml_list "$CHARTER_STATE" "distributed_sub_constitutions")
 
 if [[ "$(yaml_field "$CHARTER_STATE" "local_constitution")" == "true" ]]; then
   expected+=("PROJECT SPECIFIC")

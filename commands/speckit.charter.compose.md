@@ -83,14 +83,45 @@ bash .specify/extensions/charter/scripts/bash/registry-validate.sh "$(pwd)"
 If validation fails (non-zero exit), display the error and stop. If it succeeds,
 continue.
 
-**1a.2 — List available fragments**
+**1a.2 — Detect and enable distributed sub-constitutions (monorepo)**
 
-Enumerate fragments, sub-constitutions, and detect any existing non-placeholder
-local constitution (identical to `/speckit.charter.config` Step 3):
+Detect distributed sub-constitutions (each is a `<package>/.charter/constitution.md`
+file, recursive up to 5 package levels) and let the user enable the feature:
+
+```bash
+bash .specify/extensions/charter/scripts/bash/distributed-detect.sh "$(pwd)"
+```
+
+If one or more are found, display them:
+
+```
+Distributed sub-constitutions found:
+  packages/front
+  packages/back
+```
+
+In all cases (found or not), ask whether to enable the feature
+(`Enable distributed sub-constitutions? (yes/no) [default: no]`) and persist the
+choice:
+
+```bash
+# yes:
+bash .specify/extensions/charter/scripts/bash/config-distributed-set.sh true "$(pwd)"
+# no (or default):
+bash .specify/extensions/charter/scripts/bash/config-distributed-set.sh false "$(pwd)"
+```
+
+**1a.3 — List available fragments**
+
+Enumerate fragments, sub-constitutions, distributed sub-constitutions (when
+enabled), and detect any existing non-placeholder local constitution:
 
 ```bash
 # Fragments + sub-constitutions, tab-separated: TYPE<TAB>CATEGORY<TAB>PATH<TAB>NAME
 bash .specify/extensions/charter/scripts/bash/fragment-list.sh "$(pwd)"
+
+# Distributed sub-constitutions (only relevant when enabled). One path per line.
+bash .specify/extensions/charter/scripts/bash/distributed-detect.sh "$(pwd)"
 
 # Detect an existing local constitution.
 # Exit code: 0 = placeholder (skip), 1 = usable, 2 = no file.
@@ -100,27 +131,39 @@ echo "placeholder_check_exit=$?"
 
 The `TYPE` column from `fragment-list.sh` identifies mandatory and recommended
 fragments. Treat the local constitution as selectable only when
-`constitution-is-placeholder.sh` exits with code `1`.
+`constitution-is-placeholder.sh` exits with code `1`. Include distributed
+sub-constitutions only when `distributed_sub_constitutions` is `true` in the
+config.
 
-**1a.3 — Present the selection list and collect the selection**
+**1a.4 — Present the selection list and collect the selection**
 
 Build and present the numbered selection list exactly as in
-`/speckit.charter.config` Steps 4–5:
+`/speckit.charter.config` Steps 4–5, with `|R|` (registry) / `|L|` (local)
+source tags:
 
 ```
 [FRAGMENTS]
-  (MANDATORY) <mandatory fragments — no number>
-1. (RECOMMENDED) <recommended fragments>
-2. <regular fragments>
+   |R| (MANDATORY) <mandatory fragments — no number>
+1. |R| (RECOMMENDED) <recommended fragments>
+2. |R| <regular fragments>
 [SUB-CONSTITUTIONS]
-3. <sub-constitutions>
-4. <CURRENT PROJECT CONSTITUTION>   ← only if a non-placeholder constitution exists
+3. |R| <registry sub-constitutions>
+4. |L| <distributed sub-constitutions>   ← only if enabled, marked (detected)
+[OTHER]
+5. |L| <CURRENT PROJECT CONSTITUTION>   ← only if a non-placeholder constitution exists
+
+Sources:
+[R]: Registry
+[L]: Local
 ```
 
 Rules:
 - Mandatory fragments are always included and are not numbered.
-- Recommended, regular fragments, sub-constitutions, and the current
-  constitution share one sequential numbering starting at 1.
+- Recommended, regular fragments, registry sub-constitutions, distributed
+  sub-constitutions, and the current constitution share one sequential numbering
+  starting at 1.
+- Distributed sub-constitutions are shown by package path (e.g. `packages/back`)
+  and only when the feature is enabled.
 - Placeholder constitutions are NOT offered.
 
 Ask the user to select items. Accepted formats: space-separated (`1 2 3`),
@@ -131,11 +174,11 @@ fragments are always included regardless of selection.
 **This fragment selection is the only required user input for the fallback
 flow.**
 
-**1a.4 — Save the composition state**
+**1a.5 — Save the composition state**
 
-Assemble the state YAML (fragments, sub_constitutions, local_constitution, and
-the stripped local_constitution_content) exactly as in
-`/speckit.charter.config` Step 6.
+Assemble the state YAML (fragments, sub_constitutions,
+distributed_sub_constitutions, local_constitution, and the stripped
+local_constitution_content) exactly as in `/speckit.charter.config` Step 6.
 
 Get the stripped local constitution content (only if the user selected
 `<CURRENT PROJECT CONSTITUTION>`):
@@ -152,7 +195,7 @@ bash .specify/extensions/charter/scripts/bash/state-write.sh "$(pwd)" << 'STATEE
 STATEEOF
 ```
 
-**1a.5 — Show the composition summary (informational, NO confirmation)**
+**1a.6 — Show the composition summary (informational, NO confirmation)**
 
 Compute the total size from the saved state:
 
@@ -164,19 +207,23 @@ Display the composition summary in the standard format:
 
 ```
 ========= FINAL PROJECT CONSTITUTION =========
-------- COMPOSED --------------
-FRAGMENT <fragment_name_1>
-FRAGMENT <fragment_name_2>
-SUB-CONSTITUTION <sub_constitution_name_1>
-------- PROJECT SPECIFIC ------
-<CURRENT PROJECT CONSTITUTION>
+[FRAGMENT] |R| <fragment_name_1>
+[FRAGMENT] |R| <fragment_name_2>
+[SUB-CONSTITUTION] |R| <sub_constitution_name_1>
+[SUB-CONSTITUTION] |L| <package_path_1>
+[OTHER] |L| <CURRENT PROJECT CONSTITUTION>
 ===============================================
+
+Sources:
+[R]: Registry
+[L]: Local
 ```
 
-- Show the `------- PROJECT SPECIFIC ------` section and
-  `<CURRENT PROJECT CONSTITUTION>` line ONLY if the user selected that number.
-- Each FRAGMENT/SUB-CONSTITUTION line appears only if its number was selected;
-  mandatory fragments always appear.
+- Show the `[OTHER] |L| <CURRENT PROJECT CONSTITUTION>` line ONLY if the user
+  selected that number.
+- Each `[FRAGMENT]`/`[SUB-CONSTITUTION]` line appears only if its number was
+  selected; mandatory fragments always appear. Registry items are tagged `|R|`;
+  distributed sub-constitutions and the current constitution are tagged `|L|`.
 - If `compose-size-check.sh` reports `EXCEEDS_32K=true`, show the size warning.
 
 **Do NOT ask for yes/no/cancel confirmation.**
@@ -213,10 +260,15 @@ and the list of section names found.
 
 ### Step 4: Override Mode — Detect Local Modifications
 
-In override mode, compare each fragment section in the current constitution against the saved snapshots to detect manual edits.
+In override mode, compare each **fragment** section in the current constitution against the saved snapshots to detect manual edits.
 
-`snapshot-detect-modified.sh` reads the fragment and sub-constitution lists from
-`state.yml`, diffs each section against its snapshot, and reports the result:
+> **Sub-constitutions are cacheless.** Registry sub-constitutions and distributed
+> sub-constitutions are NOT snapshotted and are re-read fresh from their source
+> on every compose. They are therefore never reported as "modified" and are
+> always regenerated from their latest content.
+
+`snapshot-detect-modified.sh` reads the fragment list from `state.yml`, diffs
+each fragment section against its snapshot, and reports the result:
 
 ```bash
 bash .specify/extensions/charter/scripts/bash/snapshot-detect-modified.sh "$(pwd)"
@@ -258,16 +310,25 @@ Write the extracted content back into `local_constitution_content` via `state-wr
 
 ### Step 5: Resolve Content Sources
 
-Determine whether to use registry versions or snapshot versions for each fragment.
+Determine whether to use registry versions or snapshot versions for each **fragment**.
 
-**Parse the arguments to determine sub-mode:**
+> **Sub-constitutions are always read fresh** (cacheless), regardless of mode:
+> - Registry sub-constitutions → read from the registry with `fragment-read.sh`.
+> - Distributed sub-constitutions → read from the package's local file with
+>   `distributed-read.sh`.
+>
+> This guarantees a plain `/speckit.charter.compose` picks up the latest content
+> of every sub-constitution without any `update` step, while fragments keep using
+> their snapshots unless explicitly updated.
+
+**Parse the arguments to determine sub-mode (fragments only):**
 
 **If arguments contain `update`:**
-- **UPDATE MODE**: Fetch latest versions from the registry and save new snapshots.
-- If a specific fragment name follows `update` (e.g., `update global/compliance`), only update THAT fragment — leave all others using their current snapshot versions.
+- **UPDATE MODE**: Fetch latest fragment versions from the registry and save new snapshots.
+- If a specific fragment name follows `update` (e.g., `update global/compliance`), only update THAT fragment — leave all others using their current snapshot versions. (Sub-constitutions ignore `update` since they are always fresh; if the given name is a sub-constitution, a plain compose already refreshes it.)
 
 **If no `update` argument AND we're in Override Mode (HAS_SECTIONS=true):**
-- **RECREATION MODE**: Use previously saved snapshots. Check which fragments in the state are missing a snapshot:
+- **RECREATION MODE**: Use previously saved snapshots for fragments. Check which fragments in the state are missing a snapshot:
 
 ```bash
 bash .specify/extensions/charter/scripts/bash/snapshot-list-missing.sh "$(pwd)"
@@ -304,21 +365,36 @@ bash .specify/extensions/charter/scripts/bash/registry-fetch.sh "$(pwd)" >/dev/n
 bash .specify/extensions/charter/scripts/bash/fragment-read.sh "<FRAGMENT_NAME>" "<TYPE>" "$(pwd)"
 ```
 
-For full compose (CREATION or RECREATION MODE), read ALL fragments and build the complete constitution content. For each fragment / sub-constitution listed in `state.yml`, read the content from:
-- **CREATION MODE / UPDATE MODE** — the registry: `fragment-read.sh <NAME> <TYPE> "$(pwd)"`
-- **RECREATION MODE** — the snapshot: `snapshot-read.sh <NAME> <TYPE> "$(pwd)"` (exit code `2` means the snapshot is missing; fall back to `fragment-read.sh`)
+For full compose (CREATION or RECREATION MODE), read ALL fragments and sub-constitutions and build the complete constitution content.
+
+For each **fragment** listed in `state.yml`, read the content from:
+- **CREATION MODE / UPDATE MODE** — the registry: `fragment-read.sh <NAME> fragment "$(pwd)"`
+- **RECREATION MODE** — the snapshot: `snapshot-read.sh <NAME> fragment "$(pwd)"` (exit code `2` means the snapshot is missing; fall back to `fragment-read.sh`)
+
+For each **registry sub-constitution** listed in `sub_constitutions`, ALWAYS read the latest content from the registry (cacheless — no snapshot fallback):
+
+```bash
+bash .specify/extensions/charter/scripts/bash/registry-fetch.sh "$(pwd)" >/dev/null
+bash .specify/extensions/charter/scripts/bash/fragment-read.sh "<SUB_CONSTITUTION_NAME>" "sub-constitution" "$(pwd)"
+```
+
+For each **distributed sub-constitution** listed in `distributed_sub_constitutions`, ALWAYS read the latest content from the package's local file (cacheless):
+
+```bash
+bash .specify/extensions/charter/scripts/bash/distributed-read.sh "<PACKAGE_PATH>" "$(pwd)"
+```
 
 ### Step 7: Save Snapshots
 
-For CREATION MODE and UPDATE MODE, save snapshots of all fragments being used. `snapshot-save.sh` copies the current registry version into the snapshot store:
+For CREATION MODE and UPDATE MODE, save snapshots of all **fragments** being used. `snapshot-save.sh` copies the current registry version into the snapshot store:
 
 ```bash
 # For each fragment used:
 bash .specify/extensions/charter/scripts/bash/snapshot-save.sh "<FRAGMENT_NAME>" "fragment" "$(pwd)"
-
-# For each sub-constitution used:
-bash .specify/extensions/charter/scripts/bash/snapshot-save.sh "<SUB_CONSTITUTION_NAME>" "sub-constitution" "$(pwd)"
 ```
+
+> Do NOT snapshot sub-constitutions (registry or distributed). They are cacheless
+> and re-read fresh on every compose.
 
 ### Step 8: Prepare Prompt for /speckit.constitution
 
@@ -339,9 +415,9 @@ The structure of the final constitution.md MUST be:
 WHEN WORKING ON <SUB_CONSTITUTION_NAME_1>, FOLLOW THESE INSTRUCTIONS:
 <CONTENT_OF_SUB_CONSTITUTION_1>
 
-<!-- [<SUB_CONSTITUTION_NAME_2>] SECTION -->
-WHEN WORKING ON <SUB_CONSTITUTION_NAME_2>, FOLLOW THESE INSTRUCTIONS:
-<CONTENT_OF_SUB_CONSTITUTION_2>
+<!-- [<PACKAGE_PATH_1>] SECTION -->
+WHEN WORKING ON <PACKAGE_PATH_1>, FOLLOW THESE INSTRUCTIONS:
+<CONTENT_OF_DISTRIBUTED_SUB_CONSTITUTION_1>
 
 <!-- [PROJECT SPECIFIC] SECTION -->
 <CONTENT_OF_LOCAL_CONSTITUTION>
@@ -350,12 +426,13 @@ WHEN WORKING ON <SUB_CONSTITUTION_NAME_2>, FOLLOW THESE INSTRUCTIONS:
 **Rules for the prompt:**
 - Fragment names use the registry path (e.g., `global/compliance`, `languages/typescript/standards`)
 - Each section starts with its HTML comment marker on its own line
-- Sub-constitutions have the prefix line `WHEN WORKING ON <NAME>, FOLLOW THESE INSTRUCTIONS:` after the section marker
+- Registry sub-constitutions have the prefix line `WHEN WORKING ON <NAME>, FOLLOW THESE INSTRUCTIONS:` after the section marker
+- Distributed sub-constitutions use the **package path** as their section name (e.g. `packages/back`) and the same prefix line: `WHEN WORKING ON <PACKAGE_PATH>, FOLLOW THESE INSTRUCTIONS:`
 - The local constitution section uses `PROJECT SPECIFIC` as its section name
 - The local constitution content is from the state file's `local_constitution_content` field
 - Section markers are crucial for subsequent override/update detection
 - Do NOT include any placeholder tokens — all content must be concrete
-- The order must match: fragments first (in the order from state.yml), then sub-constitutions, then project-specific
+- The order must be: fragments first (in the order from state.yml), then registry sub-constitutions, then distributed sub-constitutions, then project-specific
 
 Build the prompt as a **string in memory** (do NOT save it to a file). The prompt should be:
 
@@ -412,7 +489,9 @@ For UPDATE MODE with a single fragment, also confirm:
 ## Notes
 
 - Backups are stored in `.specify/charter/backups/` with timestamps
-- Snapshots are stored in `.specify/charter/snapshots/` organized by type
+- Snapshots are stored in `.specify/charter/snapshots/` organized by type — **only fragments are snapshotted**
+- Registry sub-constitutions and distributed sub-constitutions are **cacheless**: their latest content is read on every compose, so a plain `/speckit.charter.compose` refreshes all of them (no `update` needed). Package owners can edit `<package>/.charter/constitution.md` and re-run compose to propagate changes
+- Distributed sub-constitutions are scoped by package path (e.g. `packages/back`) and use the same `WHEN WORKING ON <name>, FOLLOW THESE INSTRUCTIONS:` prefix as registry sub-constitutions
 - The local constitution content in the state file is updated each time compose runs in override mode
 - Section markers (`<!-- [NAME] SECTION -->`) are the backbone of the update mechanism — never remove them manually
 - The `/speckit.constitution` command adds its own metadata (Sync Impact Report, version line) — this is expected and should not be confused with charter sections

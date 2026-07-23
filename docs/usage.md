@@ -37,18 +37,22 @@ You'll be prompted for:
 
 After selecting fragments, you'll see a composition summary shown for
 information — there is **no confirmation prompt**. The command only asks for the
-registry value and the fragment selection:
+registry value, the distributed-sub-constitutions enable choice, and the
+fragment selection:
 
 ```
 ========= FINAL PROJECT CONSTITUTION =========
-------- COMPOSED --------------
-FRAGMENT global/compliance
-FRAGMENT global/code-quality
-FRAGMENT languages/typescript/standards
-SUB-CONSTITUTION package-auth
-------- PROJECT SPECIFIC ------
-<CURRENT PROJECT CONSTITUTION>
+[FRAGMENT] |R| global/compliance
+[FRAGMENT] |R| global/code-quality
+[FRAGMENT] |R| languages/typescript/standards
+[SUB-CONSTITUTION] |R| package-auth
+[SUB-CONSTITUTION] |L| packages/back
+[OTHER] |L| <CURRENT PROJECT CONSTITUTION>
 ===============================================
+
+Sources:
+[R]: Registry
+[L]: Local
 ```
 
 The configuration is saved automatically. If the generated constitution later
@@ -164,7 +168,12 @@ by the `/speckit.constitution` command.
 
 ## Working with Monorepos
 
-For monorepo projects, add sub-constitutions to the registry:
+Charter offers two ways to scope rules to packages in a monorepo. You can use
+either or both.
+
+### Registry sub-constitutions (centralized)
+
+Add sub-constitutions to the registry's `sub-constitutions/` directory:
 
 ```
 .charter/
@@ -182,8 +191,69 @@ WHEN WORKING ON package-auth, FOLLOW THESE INSTRUCTIONS:
 <content of package-auth.md>
 ```
 
-This tells the AI agent to apply those rules only when working on that specific
-package.
+Use this when you prefer to keep package rules **centrally in the registry**.
+
+### Distributed sub-constitutions (in-tree)
+
+Let each package own its rules next to its code, in a
+`<package>/.charter/constitution.md` file:
+
+```
+packages/
+├── front/
+│   ├── .charter/
+│   │   └── constitution.md   # front's rules
+│   └── ...
+└── back/
+    ├── .charter/
+    │   └── constitution.md   # back's rules
+    └── ...
+```
+
+Enable the feature during `/speckit.charter.config`:
+
+1. After choosing the registry, Charter scans for
+   `<package>/.charter/constitution.md` files (recursive, up to 5 package
+   levels) and lists any it finds:
+
+   ```
+   Distributed sub-constitutions found:
+     packages/front
+     packages/back
+
+   Enable distributed sub-constitutions? (yes/no) [default: no]
+   ```
+
+2. Answer `yes` to enable. The detected packages then appear in the selection
+   list tagged `|L|` and marked `(detected)`; select the ones you want.
+
+In the composed constitution each becomes a scoped section keyed by its package
+path:
+
+```markdown
+<!-- [packages/back] SECTION -->
+WHEN WORKING ON packages/back, FOLLOW THESE INSTRUCTIONS:
+<content of packages/back/.charter/constitution.md>
+```
+
+**Only `.charter/constitution.md` files are detected.** A package's own Spec Kit
+constitution (`<package>/.specify/memory/constitution.md`) and any bare
+`<package>/constitution.md` are ignored on purpose — this prevents conflicts when
+Spec Kit is used both at the monorepo root and inside individual packages.
+
+### Keeping sub-constitutions up to date (cacheless)
+
+Both registry and distributed sub-constitutions are **cacheless**: a plain
+`/speckit.charter.compose` always re-reads their latest content. A package owner
+can edit `packages/back/.charter/constitution.md` and simply run:
+
+```
+/speckit.charter.compose
+```
+
+This refreshes every sub-constitution (registry and distributed) while leaving
+fragments on their pinned snapshots — no `update` argument needed. To also
+refresh fragments, use `/speckit.charter.compose update`.
 
 ## Size Management
 
