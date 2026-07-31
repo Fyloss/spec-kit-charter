@@ -5,7 +5,15 @@
 # Output format (one per line):
 #   SECTION_NAME
 #
-# Section markers are HTML comments: <!-- [SECTION_NAME] SECTION -->
+# Section markers are typed HTML comments:
+#   <!-- [F]   ID SECTION -->   fragment
+#   <!-- [SC]  ID SECTION -->   registry sub-constitution
+#   <!-- [DSC] ID SECTION -->   distributed sub-constitution
+#   <!-- [PS]  PROJECT SPECIFIC SECTION -->   project-specific
+#
+# Legacy format (<!-- [ID] SECTION -->) is also accepted for backwards
+# compatibility with constitutions composed before the typed-marker migration.
+#
 # Also outputs "HAS_SECTIONS=true" or "HAS_SECTIONS=false" as first line.
 set -euo pipefail
 
@@ -19,11 +27,16 @@ fi
 
 echo "FILE_EXISTS=true"
 
-# Extract section names from HTML comment markers
+# Extract section IDs from HTML comment markers.
+# Supports typed markers (<!-- [TYPE] ID SECTION -->) and legacy markers
+# (<!-- [ID] SECTION -->).
 sections=()
 while IFS= read -r line; do
-  # Match: <!-- [SECTION_NAME] SECTION -->
-  if [[ "$line" =~ ^[[:space:]]*\<!--[[:space:]]*\[([^\]]+)\][[:space:]]*SECTION[[:space:]]*--\> ]]; then
+  # Typed marker: <!-- [F|SC|DSC|PS] ID SECTION -->
+  if [[ "$line" =~ ^[[:space:]]*\<!--[[:space:]]*\[[A-Z]+\][[:space:]]+(.+)[[:space:]]+SECTION[[:space:]]*--\> ]]; then
+    sections+=("${BASH_REMATCH[1]}")
+  # Legacy marker: <!-- [ID] SECTION -->
+  elif [[ "$line" =~ ^[[:space:]]*\<!--[[:space:]]*\[([^\]]+)\][[:space:]]*SECTION[[:space:]]*--\> ]]; then
     sections+=("${BASH_REMATCH[1]}")
   fi
 done < "$CONSTITUTION_PATH"

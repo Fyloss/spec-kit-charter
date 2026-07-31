@@ -4,17 +4,17 @@
   Modified principles: none
 -->
 
-<!-- [global/compliance] SECTION -->
-# Compliance Standards
+<!-- [F] global/compliance SECTION -->
+## Compliance Standards
 
 All applications must comply with the following regulatory requirements.
 
-<!-- [global/code-quality] SECTION -->
-# Code Quality Standards
+<!-- [F] global/code-quality SECTION -->
+## Code Quality Standards
 
 All code must have tests and documentation.
 
-<!-- [PROJECT SPECIFIC] SECTION -->
+<!-- [PS] PROJECT SPECIFIC SECTION -->
 # My Project
 
 Custom rules specific to this project.

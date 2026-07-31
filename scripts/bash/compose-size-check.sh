@@ -31,21 +31,29 @@ while IFS= read -r frag; do
   fi
 done < <(yaml_list "$CHARTER_STATE" "fragments")
 
-# Read sub-constitutions from state
+# Read sub-constitutions from state.
+# IDs are stored as "sub-constitutions/<name>"; strip the prefix to get the
+# filename under the registry's sub-constitutions/ directory.
 while IFS= read -r sub; do
   [[ -z "$sub" ]] && continue
-  sub_file="${REGISTRY_LOCAL_PATH}/sub-constitutions/${sub}.md"
+  # Strip "sub-constitutions/" prefix if present (new ID format)
+  name="${sub#sub-constitutions/}"
+  sub_file="${REGISTRY_LOCAL_PATH}/sub-constitutions/${name}.md"
   if [[ -f "$sub_file" ]]; then
     size=$(wc -c < "$sub_file")
     total_bytes=$((total_bytes + size))
   fi
 done < <(yaml_list "$CHARTER_STATE" "sub_constitutions")
 
-# Read distributed sub-constitutions from state (local package files)
+# Read distributed sub-constitutions from state (local package files).
+# IDs are stored as "<pkg>/.charter/constitution"; strip the suffix to get the
+# package path, then resolve to the on-disk file.
 while IFS= read -r dist; do
   [[ -z "$dist" ]] && continue
-  validate_package_path "$dist"
-  dist_file="${PROJECT_ROOT}/${dist}/.charter/constitution.md"
+  # Strip "/.charter/constitution" suffix to recover the package path
+  pkg="${dist%/.charter/constitution}"
+  validate_package_path "$pkg"
+  dist_file="${PROJECT_ROOT}/${pkg}/.charter/constitution.md"
   if [[ -f "$dist_file" ]]; then
     size=$(wc -c < "$dist_file")
     total_bytes=$((total_bytes + size))
@@ -67,7 +75,9 @@ section_count=0
 section_count=$((section_count + $(yaml_list "$CHARTER_STATE" "fragments" | wc -l)))
 section_count=$((section_count + $(yaml_list "$CHARTER_STATE" "sub_constitutions" | wc -l)))
 section_count=$((section_count + $(yaml_list "$CHARTER_STATE" "distributed_sub_constitutions" | wc -l)))
-[[ "$has_local" == "true" ]] && section_count=$((section_count + 1))
+if [[ "$has_local" == "true" ]]; then
+  section_count=$((section_count + 1))
+fi
 total_bytes=$((total_bytes + section_count * 100))
 
 echo "TOTAL_BYTES=${total_bytes}"

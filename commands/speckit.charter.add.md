@@ -12,7 +12,7 @@ Add a new fragment or sub-constitution from the registry to the current composit
 
 $ARGUMENTS
 
-The argument MAY be the name of a fragment, registry sub-constitution, or distributed sub-constitution to add (e.g., `global/code-quality`, `package-auth`, `packages/back`). If not provided, the user will be asked to select from available options.
+The argument MAY be the name of a fragment, registry sub-constitution, or distributed sub-constitution to add (e.g., `global/code-quality`, `packages-auth`, `packages/back`). If not provided, the user will be asked to select from available options.
 
 ## Prerequisites
 
@@ -83,7 +83,7 @@ Sources:
 - Group by type: fragments first, then sub-constitutions (registry `|R|` then distributed `|L|`)
 - Distributed sub-constitutions appear only when the feature is enabled
 
-If the argument already specifies a valid name that is NOT in the current state, skip the selection list and use that name directly. A distributed sub-constitution is referenced by its package path (e.g. `packages/back`).
+If the argument already specifies a valid name that is NOT in the current state, skip the selection list and use that name directly. A registry sub-constitution is referenced by its filename stem (e.g. `packages-auth`); a distributed sub-constitution is referenced by its package path (e.g. `packages/back`). Both are converted to their full state IDs before being written to state (see Step 6).
 
 If the argument specifies a name that is ALREADY in the state, display:
 
@@ -125,7 +125,7 @@ Current composition order:
 1. global/compliance (fragment)
 2. global/code-quality (fragment)
 3. languages/typescript/standards (fragment)
-4. package-auth (registry sub-constitution)
+4. packages-auth (registry sub-constitution)
 5. packages/back (distributed sub-constitution)
 6. <CURRENT PROJECT CONSTITUTION>
 
@@ -167,8 +167,12 @@ Default: at the end (before local constitution if present)
 Add the new item to the state file at the determined position.
 
 1. Read the current state
-2. Insert the new item at the correct position in the appropriate list (`fragments`, `sub_constitutions`, or `distributed_sub_constitutions`)
-3. Write the updated state back
+2. Convert the user-facing name to the full state ID:
+   - Fragment: use the registry path as-is (e.g. `global/code-quality`)
+   - Registry sub-constitution: prefix with `sub-constitutions/` (e.g. `packages-auth` → `sub-constitutions/packages-auth`)
+   - Distributed sub-constitution: append `/.charter/constitution` (e.g. `packages/back` → `packages/back/.charter/constitution`)
+3. Insert the full state ID at the correct position in the appropriate list (`fragments`, `sub_constitutions`, or `distributed_sub_constitutions`)
+4. Write the updated state back
 
 Write the updated YAML to `.specify/charter/state.yml`.
 
@@ -219,7 +223,8 @@ Current composition:
 - Adding an item updates both the state file and the actual constitution (via recomposition)
 - The local constitution is always the last section — new items are placed before it by default
 - If the item is already in the composition, the command refuses and suggests using `/speckit.charter.compose update <name>` instead (only relevant for fragments; sub-constitutions are always refreshed on compose)
-- Distributed sub-constitutions (package paths like `packages/back`) can be added only when the feature is enabled in the config
+- Distributed sub-constitutions (package paths like `packages/back`) can be added only when the feature is enabled in the config; the state stores them as `packages/back/.charter/constitution`
+- Registry sub-constitutions are displayed to the user by their filename stem (e.g. `packages-auth`) but stored in state as `sub-constitutions/packages-auth`
 - Fragments are snapshotted; registry and distributed sub-constitutions are cacheless and read fresh at compose time
 - A backup of the previous constitution is created automatically during recomposition
 - The position is determined by the combined order of fragments + registry sub-constitutions + distributed sub-constitutions in the state file

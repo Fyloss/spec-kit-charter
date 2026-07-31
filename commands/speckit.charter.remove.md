@@ -12,7 +12,7 @@ Remove a named fragment or sub-constitution from the charter composition and reg
 
 $ARGUMENTS
 
-The argument MUST be the name of a fragment, registry sub-constitution, or distributed sub-constitution to remove (e.g., `global/compliance`, `package-auth`, `packages/back`).
+The argument MUST be the name of a fragment, registry sub-constitution, or distributed sub-constitution to remove (e.g., `global/compliance`, `packages-auth`, `packages/back`).
 
 ## Prerequisites
 
@@ -37,7 +37,12 @@ the error below and stop:
 Run /speckit.charter.config first.
 ```
 
-Identify the target section name from the arguments. Verify it exists in the `fragments`, `sub_constitutions`, or `distributed_sub_constitutions` list in the state file.
+Identify the target section from the arguments. The user may provide either the short display name (e.g. `packages-auth` or `packages/back`) or the full state ID. Resolve to the full state ID before checking the state:
+- Fragment: use the path as-is (e.g. `global/compliance`)
+- Registry sub-constitution: add `sub-constitutions/` prefix if not already present (e.g. `packages-auth` → `sub-constitutions/packages-auth`)
+- Distributed sub-constitution: add `/.charter/constitution` suffix if not already present (e.g. `packages/back` → `packages/back/.charter/constitution`)
+
+Verify the resolved ID exists in the `fragments`, `sub_constitutions`, or `distributed_sub_constitutions` list in the state file.
 
 If the section is not found in the state, display:
 
@@ -110,6 +115,6 @@ This ensures the constitution file is updated consistently using the same compos
 
 - Removing an item updates both the state file and the actual constitution
 - The mandatory fragment check uses the registry manifest — mandatory fragments cannot be removed
-- Distributed sub-constitutions are removed by their package path (e.g. `packages/back`); this removes them from the composition but never touches the package's `.charter/constitution.md` file
+- Distributed sub-constitutions are removed by their package path (e.g. `packages/back`), which resolves to the state ID `packages/back/.charter/constitution`; this removes them from the composition but never touches the package's `.charter/constitution.md` file
 - The `<CURRENT PROJECT CONSTITUTION>` (local constitution) cannot be removed via this command — to remove it, re-run `/speckit.charter.config` and deselect it
 - A backup of the previous constitution is created automatically during recomposition

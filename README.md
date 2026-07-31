@@ -36,7 +36,7 @@ Charter introduces a **registry-based composition model** for constitutions:
 specify extension add charter
 
 # From GitHub release
-specify extension add charter --from https://github.com/Fyloss/spec-kit-charter/archive/refs/tags/v0.4.1.zip
+specify extension add charter --from https://github.com/Fyloss/spec-kit-charter/archive/refs/tags/v0.5.0.zip
 ```
 
 ## Quick Start
@@ -167,24 +167,42 @@ recommended_fragments:
 
 ## Constitution Output
 
-The composed constitution uses HTML comment markers to delimit sections:
+The composed constitution uses **typed** HTML comment markers to delimit sections.
+Each section's top heading is automatically normalized to H2:
 
 ```markdown
-<!-- [global/compliance] SECTION -->
+<!-- [F] global/compliance SECTION -->
+## Compliance Standards
 <compliance fragment content>
 
-<!-- [global/code-quality] SECTION -->
+<!-- [F] global/code-quality SECTION -->
+## Code Quality Standards
 <code quality fragment content>
 
-<!-- [package-auth] SECTION -->
-WHEN WORKING ON package-auth, FOLLOW THESE INSTRUCTIONS:
-<package-auth sub-constitution content>
+<!-- [SC] sub-constitutions/packages-auth SECTION -->
+WHEN WORKING ON packages/auth, FOLLOW THESE INSTRUCTIONS:
+## Auth rules
+<packages-auth sub-constitution content>
 
-<!-- [PROJECT SPECIFIC] SECTION -->
+<!-- [DSC] packages/back/.charter/constitution SECTION -->
+WHEN WORKING ON packages/back, FOLLOW THESE INSTRUCTIONS:
+## Back rules
+<content of packages/back/.charter/constitution.md>
+
+<!-- [PS] PROJECT SPECIFIC SECTION -->
 <existing project-specific constitution content>
 ```
 
+Section marker type tags:
+| Tag | Meaning |
+|---|---|
+| `[F]` | Fragment from the registry |
+| `[SC]` | Registry sub-constitution |
+| `[DSC]` | Distributed (in-tree) sub-constitution |
+| `[PS]` | Project-specific (local) section |
+
 These markers enable:
+- Identifying the kind and origin of each section at a glance
 - Section-level update detection
 - Individual fragment replacement
 - Preservation of project-specific rules during recomposition
@@ -196,10 +214,15 @@ Charter offers two complementary mechanisms for monorepos:
 ### 1. Registry sub-constitutions (centralized)
 
 Sub-constitutions in the registry's `sub-constitutions/` directory are scoped to
-a specific package with a prefix line:
+a specific package. Name the file using `-` as a path separator (e.g.
+`packages-auth.md`) — Charter derives the `WHEN WORKING ON` path by replacing
+`-` with `/`:
 
 ```markdown
-WHEN WORKING ON <package-name>, FOLLOW THESE INSTRUCTIONS:
+<!-- [SC] sub-constitutions/packages-auth SECTION -->
+WHEN WORKING ON packages/auth, FOLLOW THESE INSTRUCTIONS:
+## Auth rules
+<content of packages-auth.md>
 ```
 
 Use these when you want package rules stored **centrally in the registry** rather
@@ -228,11 +251,13 @@ in a `<package>/.charter/constitution.md` file:
 During configuration, Charter recursively scans (up to 5 package levels) for
 `<package>/.charter/constitution.md` files and, once you enable the feature,
 offers them for selection alongside registry fragments. In the composed
-constitution each one becomes a scoped section keyed by its package path:
+constitution each one becomes a scoped section. The section ID encodes the full
+source path; the `WHEN WORKING ON` line uses the package root:
 
 ```markdown
-<!-- [packages/back] SECTION -->
+<!-- [DSC] packages/back/.charter/constitution SECTION -->
 WHEN WORKING ON packages/back, FOLLOW THESE INSTRUCTIONS:
+## Back rules
 <content of packages/back/.charter/constitution.md>
 ```
 
