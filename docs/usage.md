@@ -159,7 +159,7 @@ fragments.
 
 If your project has an existing constitution before installing Charter, the
 `<CURRENT PROJECT CONSTITUTION>` option in the selection list lets you preserve
-those rules. They are placed in a `<!-- [PROJECT SPECIFIC] SECTION -->` section
+those rules. They are placed in a `<!-- [PS] PROJECT SPECIFIC SECTION -->` section
 at the end of the composed constitution.
 
 The Spec Kit metadata (Sync Impact Report comment, version/ratified/amended
@@ -183,12 +183,15 @@ Add sub-constitutions to the registry's `sub-constitutions/` directory:
     └── package-ui.md
 ```
 
-Each sub-constitution is wrapped with a scoping prefix in the final constitution:
+Each sub-constitution is wrapped with a scoping prefix in the final constitution.
+The section ID includes the `sub-constitutions/` prefix; the `WHEN WORKING ON`
+path is derived by replacing `-` with `/` in the filename stem:
 
 ```markdown
-<!-- [package-auth] SECTION -->
-WHEN WORKING ON package-auth, FOLLOW THESE INSTRUCTIONS:
-<content of package-auth.md>
+<!-- [SC] sub-constitutions/packages-auth SECTION -->
+WHEN WORKING ON packages/auth, FOLLOW THESE INSTRUCTIONS:
+## Auth rules                   ← top heading auto-shifted to H2
+<content of packages-auth.md>
 ```
 
 Use this when you prefer to keep package rules **centrally in the registry**.
@@ -227,12 +230,13 @@ Enable the feature during `/speckit.charter.config`:
 2. Answer `yes` to enable. The detected packages then appear in the selection
    list tagged `|L|` and marked `(detected)`; select the ones you want.
 
-In the composed constitution each becomes a scoped section keyed by its package
-path:
+In the composed constitution each becomes a scoped section. The section ID is the
+full source path (minus `.md`); the `WHEN WORKING ON` line uses the package root:
 
 ```markdown
-<!-- [packages/back] SECTION -->
+<!-- [DSC] packages/back/.charter/constitution SECTION -->
 WHEN WORKING ON packages/back, FOLLOW THESE INSTRUCTIONS:
+## Back rules                   ← top heading auto-shifted to H2
 <content of packages/back/.charter/constitution.md>
 ```
 

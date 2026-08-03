@@ -34,26 +34,40 @@ rather than LLM reasoning. This:
 - Ensures deterministic behavior
 - Makes operations reproducible and testable
 
-### 3. Section Markers
+### 3. Typed Section Markers
 
-HTML comments (`<!-- [NAME] SECTION -->`) serve as section delimiters in the
-generated constitution. They enable:
+HTML comments with a type tag serve as section delimiters in the generated constitution:
 
-- Identifying which fragment produced each section
+| Type | Tag | Example |
+|---|---|---|
+| Fragment | `[F]` | `<!-- [F] global/compliance SECTION -->` |
+| Registry sub-constitution | `[SC]` | `<!-- [SC] sub-constitutions/packages-auth SECTION -->` |
+| Distributed sub-constitution | `[DSC]` | `<!-- [DSC] packages/auth/.charter/constitution SECTION -->` |
+| Project-specific | `[PS]` | `<!-- [PS] PROJECT SPECIFIC SECTION -->` |
+
+They enable:
+
+- Identifying the kind and origin of each section at a glance
 - Extracting individual sections for comparison
 - Replacing specific sections during updates
 - Preserving project-specific content during recomposition
 
+The marker format is backwards-compatible: `constitution-parse.sh` and `constitution-extract.sh` also accept the legacy `<!-- [NAME] SECTION -->` format, so constitutions composed before the migration can still be parsed and overridden.
+
 ### 4. Snapshot-Based Change Detection (fragments only)
 
 Rather than tracking fragment hashes, Charter saves full **fragment** content as
-"snapshots" after each compose. On subsequent composes, it compares each fragment
+“snapshots” after each compose. On subsequent composes, it compares each fragment
 section in the constitution against its snapshot to detect local modifications.
 This approach:
 
 - Works without a database or complex state
 - Handles content normalization naturally
 - Provides clear diff capabilities
+
+**Heading-agnostic comparison**: `snapshot-compare.sh` strips leading `#` characters from real heading lines before diffing, preventing false positives caused by the automatic heading normalization that compose applies to the final constitution (top heading → H2). Snapshots always store the original registry content; only the assembled constitution output is normalized.
+
+Both the normalization (`heading-normalize.sh`) and the comparison (`snapshot-compare.sh`) are **fence-aware**: lines inside fenced code blocks (` ``` ` / `~~~`) are never treated as headings. This prevents `#`-prefixed shell/Python/YAML comments inside code samples from corrupting heading-level calculations or producing false negatives in drift detection.
 
 Sub-constitutions (registry and distributed) are intentionally **not**
 snapshotted — see “Cacheless sub-constitutions” below.
@@ -232,15 +246,16 @@ avoids a package's own Spec Kit constitution
 ### Opt-in and cacheless
 
 The feature is opt-in via the `distributed_sub_constitutions` flag in
-`config.yml` (default `false`), set during configuration. Selected package paths
-are stored in the `distributed_sub_constitutions` list in `state.yml`. Content is
-read fresh via `distributed-read.sh` on every compose (cacheless), so it never
-goes through the snapshot store.
+`config.yml` (default `false`), set during configuration. Selected packages are
+stored in the `distributed_sub_constitutions` list in `state.yml` as their full
+source path (e.g. `packages/auth/.charter/constitution`). Content is read fresh
+via `distributed-read.sh` on every compose (cacheless), so it never goes through
+the snapshot store.
 
 ## Limitations
 
-- Fragment content is included verbatim — no variable substitution or templating
+- Fragment content is heading-normalized (top heading → H2) in the final constitution, but otherwise included verbatim — no variable substitution or templating
 - The 32 KiB warning is advisory — Charter does not enforce a size limit
-- Sub-constitutions use a name-based scoping prefix, not directory-based
-- Snapshot comparison (fragments only) is exact string match — formatting changes are detected as modifications
+- Sub-constitutions use a name-based scoping prefix (`WHEN WORKING ON …`), not directory-based
+- Snapshot comparison (fragments only) ignores heading-level differences outside fenced code blocks; other formatting changes (including edits inside code samples) are detected as modifications
 - Distributed sub-constitutions are detected up to 5 package-directory levels deep

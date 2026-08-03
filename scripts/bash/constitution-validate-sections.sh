@@ -4,8 +4,13 @@
 #
 # Expected sections are derived from state.yml (fragments + sub-constitutions +
 # distributed sub-constitutions + the PROJECT SPECIFIC section when
-# local_constitution is true). Each expected section must have a
-# "<!-- [NAME] SECTION -->" marker in the generated constitution.
+# local_constitution is true). Each expected section must have a typed section
+# marker in the generated constitution:
+#
+#   <!-- [F]   ID SECTION -->   (fragments)
+#   <!-- [SC]  ID SECTION -->   (registry sub-constitutions)
+#   <!-- [DSC] ID SECTION -->   (distributed sub-constitutions)
+#   <!-- [PS]  PROJECT SPECIFIC SECTION -->   (project-specific)
 #
 # Output:
 #   VALID=true
@@ -26,33 +31,38 @@ fi
 
 [[ -f "$CHARTER_STATE" ]] || die "No charter state found: $CHARTER_STATE"
 
-expected=()
+missing=()
+
+# Fragments → [F] tag
 while IFS= read -r frag; do
   [[ -z "$frag" ]] && continue
-  expected+=("$frag")
+  if ! grep -q "<!-- \[F\] ${frag} SECTION -->" "$CONSTITUTION_PATH" 2>/dev/null; then
+    missing+=("$frag")
+  fi
 done < <(yaml_list "$CHARTER_STATE" "fragments")
 
+# Registry sub-constitutions → [SC] tag
 while IFS= read -r sub; do
   [[ -z "$sub" ]] && continue
-  expected+=("$sub")
+  if ! grep -q "<!-- \[SC\] ${sub} SECTION -->" "$CONSTITUTION_PATH" 2>/dev/null; then
+    missing+=("$sub")
+  fi
 done < <(yaml_list "$CHARTER_STATE" "sub_constitutions")
 
+# Distributed sub-constitutions → [DSC] tag
 while IFS= read -r dist; do
   [[ -z "$dist" ]] && continue
-  validate_package_path "$dist"
-  expected+=("$dist")
+  if ! grep -q "<!-- \[DSC\] ${dist} SECTION -->" "$CONSTITUTION_PATH" 2>/dev/null; then
+    missing+=("$dist")
+  fi
 done < <(yaml_list "$CHARTER_STATE" "distributed_sub_constitutions")
 
+# Project-specific → [PS] tag
 if [[ "$(yaml_field "$CHARTER_STATE" "local_constitution")" == "true" ]]; then
-  expected+=("PROJECT SPECIFIC")
-fi
-
-missing=()
-for section in "${expected[@]}"; do
-  if ! grep -q "<!-- \[${section}\] SECTION -->" "$CONSTITUTION_PATH" 2>/dev/null; then
-    missing+=("$section")
+  if ! grep -q "<!-- \[PS\] PROJECT SPECIFIC SECTION -->" "$CONSTITUTION_PATH" 2>/dev/null; then
+    missing+=("PROJECT SPECIFIC")
   fi
-done
+fi
 
 if [[ ${#missing[@]} -gt 0 ]]; then
   echo "VALID=false"

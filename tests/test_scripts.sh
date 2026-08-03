@@ -843,12 +843,13 @@ section "constitution-validate-sections.sh (distributed)"
 test_validate_distributed_sections() {
   setup
   setup_distributed
-  # Build a constitution containing a distributed section marker.
+  # Build a constitution containing typed section markers (new format).
+  # Distributed sub-constitution ID: "<pkg>/.charter/constitution"
   cat > "${TMP_DIR}/project/.specify/memory/constitution.md" <<'EOF'
-<!-- [global/compliance] SECTION -->
+<!-- [F] global/compliance SECTION -->
 Compliance rules.
 
-<!-- [packages/back] SECTION -->
+<!-- [DSC] packages/back/.charter/constitution SECTION -->
 WHEN WORKING ON packages/back, FOLLOW THESE INSTRUCTIONS:
 back rules
 EOF
@@ -857,15 +858,15 @@ fragments:
   - "global/compliance"
 sub_constitutions: []
 distributed_sub_constitutions:
-  - "packages/back"
+  - "packages/back/.charter/constitution"
 local_constitution: false
 EOF
   local output rc=0
   output="$(bash "${SCRIPTS_DIR}/constitution-validate-sections.sh" "${TMP_DIR}/project" 2>&1)" || rc=$?
   if [[ "$rc" -eq 0 ]] && echo "$output" | grep -q "VALID=true"; then
-    pass "constitution-validate-sections: accepts distributed section"
+    pass "constitution-validate-sections: accepts distributed section (typed marker)"
   else
-    fail "constitution-validate-sections: accepts distributed section" "rc=$rc output: $output"
+    fail "constitution-validate-sections: accepts distributed section (typed marker)" "rc=$rc output: $output"
   fi
 
   # Missing distributed section is reported.
@@ -873,12 +874,12 @@ EOF
 fragments:
   - "global/compliance"
 distributed_sub_constitutions:
-  - "packages/front"
+  - "packages/front/.charter/constitution"
 local_constitution: false
 EOF
   rc=0
   output="$(bash "${SCRIPTS_DIR}/constitution-validate-sections.sh" "${TMP_DIR}/project" 2>&1)" || rc=$?
-  if [[ "$rc" -eq 1 ]] && echo "$output" | grep -q "MISSING=packages/front"; then
+  if [[ "$rc" -eq 1 ]] && echo "$output" | grep -q "MISSING=packages/front/.charter/constitution"; then
     pass "constitution-validate-sections: reports missing distributed section"
   else
     fail "constitution-validate-sections: reports missing distributed section" "rc=$rc output: $output"
@@ -886,6 +887,191 @@ EOF
 }
 
 test_validate_distributed_sections
+
+# ── Snapshot Compare: heading normalization ───────────────────────────────
+
+section "snapshot-compare.sh (heading normalization)"
+
+test_snapshot_compare_heading_normalization() {
+  setup
+  cp "${FIXTURES_DIR}/sample-composed-constitution.md" "${TMP_DIR}/project/.specify/memory/constitution.md"
+  cat > "${TMP_DIR}/project/.specify/charter/state.yml" <<'EOF'
+fragments:
+  - "global/compliance"
+local_constitution: false
+EOF
+
+  # Snapshot has H1 heading; composed constitution has H2 (auto-shifted).
+  # snapshot-compare must treat them as equal (same body, only indent differs).
+  mkdir -p "${TMP_DIR}/project/.specify/charter/snapshots/fragment/global"
+  cat > "${TMP_DIR}/project/.specify/charter/snapshots/fragment/global/compliance.md" <<'EOF'
+# Compliance Standards
+
+All applications must comply with the following regulatory requirements.
+EOF
+  local rc=0
+  bash "${SCRIPTS_DIR}/snapshot-compare.sh" "global/compliance" "fragment" "${TMP_DIR}/project" 2>/dev/null || rc=$?
+  if [[ "$rc" -eq 0 ]]; then
+    pass "snapshot-compare: heading-level difference is ignored (auto-indent)"
+  else
+    fail "snapshot-compare: heading-level difference is ignored (auto-indent)" "exit code: $rc"
+  fi
+
+  # A real content change must still be detected.
+  cat > "${TMP_DIR}/project/.specify/charter/snapshots/fragment/global/compliance.md" <<'EOF'
+# Compliance Standards
+
+COMPLETELY DIFFERENT CONTENT HERE.
+EOF
+  rc=0
+  bash "${SCRIPTS_DIR}/snapshot-compare.sh" "global/compliance" "fragment" "${TMP_DIR}/project" 2>/dev/null || rc=$?
+  if [[ "$rc" -eq 1 ]]; then
+    pass "snapshot-compare: real content change is detected"
+  else
+    fail "snapshot-compare: real content change is detected" "exit code: $rc"
+  fi
+}
+
+test_snapshot_compare_heading_normalization
+
+# ── heading-normalize.sh ──────────────────────────────────────────────────
+
+section "heading-normalize.sh"
+
+test_heading_normalize_h1_to_h2() {
+  local output
+  output="$(printf '# Title\nsome text\n' | bash "${SCRIPTS_DIR}/heading-normalize.sh" 2)"
+  if echo "$output" | grep -q "^## Title"; then
+    pass "heading-normalize: H1 shifted to H2"
+  else
+    fail "heading-normalize: H1 shifted to H2" "output: $output"
+  fi
+}
+
+test_heading_normalize_h4_to_h2() {
+  local output
+  output="$(printf '#### Title\n##### Sub\ntext\n' | bash "${SCRIPTS_DIR}/heading-normalize.sh" 2)"
+  if echo "$output" | grep -q "^## Title" && echo "$output" | grep -q "^### Sub"; then
+    pass "heading-normalize: H4 shifted to H2, H5 shifted to H3"
+  else
+    fail "heading-normalize: H4 shifted to H2, H5 shifted to H3" "output: $output"
+  fi
+}
+
+test_heading_normalize_already_h2() {
+  local output
+  output="$(printf '## Title\n### Sub\ntext\n' | bash "${SCRIPTS_DIR}/heading-normalize.sh" 2)"
+  if echo "$output" | grep -q "^## Title" && echo "$output" | grep -q "^### Sub"; then
+    pass "heading-normalize: H2 top heading is unchanged"
+  else
+    fail "heading-normalize: H2 top heading is unchanged" "output: $output"
+  fi
+}
+
+test_heading_normalize_no_headings() {
+  local output
+  output="$(printf 'no headings here\njust text\n' | bash "${SCRIPTS_DIR}/heading-normalize.sh" 2)"
+  if echo "$output" | grep -q "no headings here"; then
+    pass "heading-normalize: content without headings passes through unchanged"
+  else
+    fail "heading-normalize: content without headings passes through unchanged" "output: $output"
+  fi
+}
+
+test_heading_normalize_fence_protection() {
+  # A '#' comment inside a fenced code block must NOT be treated as a heading.
+  # Without fence awareness, "# install deps" would pull min_level to 1
+  # and shift "## Setup" to "### Setup" (wrong) and mangle the comment.
+  local input output
+  input="$(printf '## Setup\n\n```bash\n# install deps\nnpm install\n```\n\n### Linting\n')"
+  output="$(printf '%s' "$input" | bash "${SCRIPTS_DIR}/heading-normalize.sh" 2)"
+  local ok=1
+  # Top heading must remain H2
+  echo "$output" | grep -q "^## Setup"       || ok=0
+  # Sub-heading must remain H3
+  echo "$output" | grep -q "^### Linting"    || ok=0
+  # Code-block comment must be untouched
+  echo "$output" | grep -q "^# install deps" || ok=0
+  if [[ "$ok" -eq 1 ]]; then
+    pass "heading-normalize: '#' inside fenced code block is not treated as heading"
+  else
+    fail "heading-normalize: '#' inside fenced code block is not treated as heading" "output: $output"
+  fi
+}
+
+test_heading_normalize_h1_to_h2
+test_heading_normalize_h4_to_h2
+test_heading_normalize_already_h2
+test_heading_normalize_no_headings
+test_heading_normalize_fence_protection
+
+# ── snapshot-compare.sh: fence-aware heading normalization ────────────────
+
+section "snapshot-compare.sh (fence-aware heading normalization)"
+
+test_snapshot_compare_fence_aware() {
+  setup
+  # Fragment with a code block containing a shell comment.
+  # The comment "# install deps" must NOT be treated as a heading;
+  # snapshot has H1, constitution has H2 (auto-shifted) — still equal.
+  cat > "${TMP_DIR}/project/.specify/memory/constitution.md" <<'EOF'
+<!-- [F] global/compliance SECTION -->
+## Setup
+
+```bash
+# install deps
+npm install
+```
+
+### Linting
+EOF
+  cat > "${TMP_DIR}/project/.specify/charter/state.yml" <<'EOF'
+fragments:
+  - "global/compliance"
+local_constitution: false
+EOF
+  mkdir -p "${TMP_DIR}/project/.specify/charter/snapshots/fragment/global"
+  # Snapshot is the original registry content (H1 top, same code block)
+  cat > "${TMP_DIR}/project/.specify/charter/snapshots/fragment/global/compliance.md" <<'EOF'
+# Setup
+
+```bash
+# install deps
+npm install
+```
+
+## Linting
+EOF
+  local rc=0
+  bash "${SCRIPTS_DIR}/snapshot-compare.sh" "global/compliance" "fragment" "${TMP_DIR}/project" 2>/dev/null || rc=$?
+  if [[ "$rc" -eq 0 ]]; then
+    pass "snapshot-compare: fence-aware — code-block comment does not affect heading detection"
+  else
+    fail "snapshot-compare: fence-aware — code-block comment does not affect heading detection" "exit code: $rc"
+  fi
+
+  # Modifying a comment inside a code block IS a real change and must be detected.
+  cat > "${TMP_DIR}/project/.specify/memory/constitution.md" <<'EOF'
+<!-- [F] global/compliance SECTION -->
+## Setup
+
+```bash
+# CHANGED COMMENT
+npm install
+```
+
+### Linting
+EOF
+  rc=0
+  bash "${SCRIPTS_DIR}/snapshot-compare.sh" "global/compliance" "fragment" "${TMP_DIR}/project" 2>/dev/null || rc=$?
+  if [[ "$rc" -eq 1 ]]; then
+    pass "snapshot-compare: fence-aware — code-block comment change is detected"
+  else
+    fail "snapshot-compare: fence-aware — code-block comment change is detected" "exit code: $rc"
+  fi
+}
+
+test_snapshot_compare_fence_aware
 
 # ── Summary ───────────────────────────────────────────────────────────────
 

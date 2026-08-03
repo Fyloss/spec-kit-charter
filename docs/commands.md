@@ -144,24 +144,43 @@ The generated constitution follows this structure:
 
 ```markdown
 <!-- Sync Impact Report ... -->    ← Added by /speckit.constitution
-<!-- [fragment_1] SECTION -->
+<!-- [F] fragment_1 SECTION -->
+## Fragment 1 heading             ← top heading auto-shifted to H2
 <fragment_1 content>
 
-<!-- [fragment_2] SECTION -->
+<!-- [F] fragment_2 SECTION -->
+## Fragment 2 heading
 <fragment_2 content>
 
-<!-- [sub_const_1] SECTION -->
-WHEN WORKING ON sub_const_1, FOLLOW THESE INSTRUCTIONS:
+<!-- [SC] sub-constitutions/packages-auth SECTION -->
+WHEN WORKING ON packages/auth, FOLLOW THESE INSTRUCTIONS:
+## Auth rules heading
 <registry sub-constitution content>
 
-<!-- [packages/back] SECTION -->
+<!-- [DSC] packages/back/.charter/constitution SECTION -->
 WHEN WORKING ON packages/back, FOLLOW THESE INSTRUCTIONS:
+## Back rules heading
 <distributed sub-constitution content>
 
-<!-- [PROJECT SPECIFIC] SECTION -->
+<!-- [PS] PROJECT SPECIFIC SECTION -->
 <local constitution content>
 **Version**: X.Y.Z | ...           ← Added by /speckit.constitution
 ```
+
+Section marker type tags:
+- `[F]` — fragment from the registry
+- `[SC]` — registry sub-constitution (`sub-constitutions/<name>` ID)
+- `[DSC]` — distributed sub-constitution (`<pkg>/.charter/constitution` ID)
+- `[PS]` — project-specific (local constitution)
+
+**Heading normalization**: compose automatically shifts each section's top heading
+to H2, preserving the internal relative depth. This never modifies registry or
+snapshot files.
+
+**Sub-constitution prefix lines**: for registry SCs, the working-on path is
+derived by stripping `sub-constitutions/` and replacing `-` with `/` in the stem
+(`packages-auth` → `packages/auth`). For distributed SCs, it is the package
+root path.
 
 Order: fragments → registry sub-constitutions → distributed sub-constitutions →
 project specific.

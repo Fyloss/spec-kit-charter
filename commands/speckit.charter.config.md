@@ -242,8 +242,9 @@ local_constitution_content: |
 ```
 
 **Rules for the lists:**
-- `sub_constitutions` holds the selected **registry** sub-constitutions (names without `.md`).
-- `distributed_sub_constitutions` holds the selected **distributed** sub-constitutions (package paths, e.g. `packages/back`). Include this list only when the feature is enabled and the user selected one or more; otherwise write it as an empty list (`distributed_sub_constitutions: []`) or omit it.
+- `sub_constitutions` holds the selected **registry** sub-constitutions as `sub-constitutions/<filename_without_md>` (e.g. `sub-constitutions/packages-auth`). The `sub-constitutions/` prefix is part of the stored ID.
+- `distributed_sub_constitutions` holds the selected **distributed** sub-constitutions as `<package_path>/.charter/constitution` (e.g. `packages/auth/.charter/constitution`). This encodes the full source path without the `.md` extension.
+- Include `distributed_sub_constitutions` only when the feature is enabled and the user selected one or more; otherwise write it as an empty list (`distributed_sub_constitutions: []`) or omit it.
 
 **Rules for `local_constitution_content`:**
 - Only present if `local_constitution: true` (the user selected
@@ -335,7 +336,8 @@ After saving the state, display:
 
 - The registry can be changed at any time by re-running `/speckit.charter.config`.
 - Fragment names correspond to their file paths within the registry's `fragments/` directory, without the `.md` extension (e.g., `languages/typescript/standards`).
-- Sub-constitution names correspond to their file paths within the registry's `sub-constitutions/` directory, without the `.md` extension.
+- Registry sub-constitution IDs are stored as `sub-constitutions/<filename_without_md>` (e.g., `sub-constitutions/packages-auth`). The `sub-constitutions/` prefix is part of the ID and enables typed section markers in the composed constitution.
+- Distributed sub-constitution IDs are stored as `<package_path>/.charter/constitution` (e.g., `packages/auth/.charter/constitution`). The full source path (minus `.md`) is the ID.
 - Git registries are cloned/fetched into `.specify/charter/.cache/registry/` and use the default branch.
 - Git authentication uses the local system credentials (SSH keys, credential helpers) — no additional authentication is required.
 
@@ -353,8 +355,7 @@ After saving the state, display:
   to avoid conflicts when Spec Kit is used both at the monorepo root and inside
   individual packages, and to avoid interfering with future evolution of the
   Spec Kit constitution file.
-- The name of a distributed sub-constitution is its package path relative to the
-  project root (e.g. `packages/back`).
+- The ID of a distributed sub-constitution stored in state is its full source path relative to the project root, without `.md` (e.g. `packages/back/.charter/constitution`). The `WHEN WORKING ON` prefix line in the composed constitution uses only the package root path (e.g. `packages/back`).
 - Distributed (and registry) sub-constitutions are **cacheless**: their latest
   on-disk content is read on every `/speckit.charter.compose`, so package owners
   can update rules without any snapshot/update step.

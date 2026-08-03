@@ -116,20 +116,33 @@ root (NOT inside `fragments/`):
 
 ### Content
 
-Sub-constitutions are regular Markdown files. When composed, Charter
-automatically adds a scoping prefix:
+Sub-constitutions are regular Markdown files. Write them with any heading depth —
+Charter will automatically normalize the top heading to H2 in the final
+constitution.
+
+When composed, Charter automatically adds a scoping prefix line and a typed
+section marker. The `WHEN WORKING ON` path is derived from the filename: replace
+every `-` with `/` in the stem.
+
+Example — file `packages-auth.md` produces:
 
 ```markdown
-WHEN WORKING ON <package-name>, FOLLOW THESE INSTRUCTIONS:
+<!-- [SC] sub-constitutions/packages-auth SECTION -->
+WHEN WORKING ON packages/auth, FOLLOW THESE INSTRUCTIONS:
+## Auth rules                   ← top heading auto-shifted to H2
+<content of packages-auth.md>
 ```
 
-This tells the AI agent to apply these rules only when working on that specific
-package.
+This tells the AI agent to apply these rules only when working on `packages/auth`.
 
 ### Naming
 
-The file name (without `.md`) becomes the sub-constitution name used in the
-selection list and section markers.
+Name sub-constitution files using `-` as a path separator (e.g.
+`packages-auth.md`, `packages-back.md`). The filename stem (without `.md`) is
+used to derive the `WHEN WORKING ON` path by replacing `-` with `/`.
+
+The section ID in the composed constitution is `sub-constitutions/<stem>` (e.g.
+`sub-constitutions/packages-auth`).
 
 ### Registry vs. distributed sub-constitutions
 
@@ -139,17 +152,17 @@ Charter supports two kinds of sub-constitutions for monorepos:
 |---|---|---|
 | **Location** | `sub-constitutions/<name>.md` in the registry | `<package>/.charter/constitution.md` in the package |
 | **Owner** | Registry maintainers | Package owners (in-tree) |
-| **Name** | File name (e.g. `package-auth`) | Package path (e.g. `packages/back`) |
+| **State ID** | `sub-constitutions/<stem>` (e.g. `sub-constitutions/packages-auth`) | `<pkg>/.charter/constitution` (e.g. `packages/auth/.charter/constitution`) |
+| **Section marker** | `<!-- [SC] sub-constitutions/<stem> SECTION -->` | `<!-- [DSC] <pkg>/.charter/constitution SECTION -->` |
+| **Prefix line** | `WHEN WORKING ON <stem_with_slashes>, FOLLOW THESE INSTRUCTIONS:` | `WHEN WORKING ON <pkg>, FOLLOW THESE INSTRUCTIONS:` |
 | **Enabled** | Always available | Opt-in flag `distributed_sub_constitutions` |
 | **Caching** | Cacheless — read fresh each compose | Cacheless — read fresh each compose |
 
 Use **registry** sub-constitutions when you prefer to keep package rules
 centralized in the registry. Use **distributed** sub-constitutions when package
-owners should maintain their own rules alongside their code. Both render
-identically in the final constitution (a `WHEN WORKING ON <name>, ...` scoped
-section) and both always reflect their latest on-disk content. Distributed
-sub-constitutions are configured per project (see the Usage Guide), not in the
-registry.
+owners should maintain their own rules alongside their code. Both always reflect
+their latest on-disk content. Distributed sub-constitutions are configured per
+project (see the Usage Guide), not in the registry.
 
 ## Hosting
 
