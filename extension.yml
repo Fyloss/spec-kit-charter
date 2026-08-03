@@ -3,7 +3,7 @@ schema_version: "1.0"
 extension:
   id: "charter"
   name: "Charter — Constitution Composer"
-  version: "0.1.0"
+  version: "0.5.1"
   description: "Compose project constitutions from shared fragment registries"
   author: "sakitA"
   repository: "https://github.com/Fyloss/spec-kit-charter"
