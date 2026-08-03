@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-08-03
+
+### Fixed
+
+- `extension.yml` still declared version `0.1.0`, well behind the actual
+  released state. Bumped to `0.5.1` and updated the GitHub release link in
+  README.md to match.
+
+## [0.5.0] - 2026-08-03
+
 ### Added
 
 - **Heading normalization in compose.** Each section's top heading is
@@ -44,19 +54,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Distributed sub-constitutions are stored as `<pkg>/.charter/constitution`
     (e.g. `packages/auth/.charter/constitution`) to encode the full source path.
 
-### Breaking Changes (from previous [Unreleased])
+### Fixed
 
-- **Existing composed constitutions use the old `<!-- [NAME] SECTION -->` marker
-  format.** Run `/speckit.charter.compose` once to regenerate the constitution
-  with the new typed markers. Back up first if needed — `/speckit.charter.restore`
-  can revert the change.
-- **`state.yml` sub-constitution ID format changed.** If you have an existing
-  `state.yml`, re-run `/speckit.charter.config` to regenerate it with the new IDs,
-  or update it manually: change `- packages-auth` under `sub_constitutions` to
-  `- sub-constitutions/packages-auth`, and change `- packages/back` under
-  `distributed_sub_constitutions` to `- packages/back/.charter/constitution`.
+- Heading normalization and snapshot comparison now track fenced code blocks
+  (` ``` ` / `~~~`) so `#`-prefixed shell/Python/YAML comments and shebangs
+  inside code samples are never mistaken for Markdown headings — previously
+  this could mis-indent fragment content or hide a real content change behind
+  a false "unmodified" snapshot comparison.
+- Replaced the GNU-only `sed 's/^#\+.../'` heading-stripping in
+  `snapshot-compare.sh` with a portable `awk` implementation, since the `\+`
+  extension silently becomes a no-op on BSD/macOS `sed`.
 
----
+### Changed
+
+- **BREAKING:** Existing composed constitutions use the old
+  `<!-- [NAME] SECTION -->` marker format. Run `/speckit.charter.compose` once
+  to regenerate the constitution with the new typed markers. Back up first if
+  needed — `/speckit.charter.restore` can revert the change.
+- **BREAKING:** `state.yml` sub-constitution ID format changed. If you have an
+  existing `state.yml`, re-run `/speckit.charter.config` to regenerate it with
+  the new IDs, or update it manually: change `- packages-auth` under
+  `sub_constitutions` to `- sub-constitutions/packages-auth`, and change
+  `- packages/back` under `distributed_sub_constitutions` to
+  `- packages/back/.charter/constitution`.
+
+## [0.4.1] - 2026-07-22
+
+### Added
 
 - **Distributed sub-constitutions** for monorepos. Charter can now detect
   `<package>/.charter/constitution.md` files in monorepo packages (recursive, up
@@ -74,13 +98,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   sub-constitutions (referenced by package path, e.g. `packages/back`).
 - New scripts: `distributed-detect.sh`, `distributed-read.sh`, and
   `config-distributed-set.sh`.
-- `/speckit.charter.compose` now runs an inline configuration flow when no
-  charter configuration exists yet (`.specify/charter/state.yml` missing).
-  Instead of erroring out, it prompts for the registry value and the fragment
-  selection, displays the composition summary without asking for confirmation,
-  reminds the user that `/speckit.charter.restore` can undo the change, and
-  proceeds automatically to generate the constitution — letting users configure
-  and compose in a single step.
 
 ### Changed
 
@@ -97,12 +114,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `[OTHER] |L| <CURRENT PROJECT CONSTITUTION>`, followed by a source legend.
 - `config.yml` now includes the `distributed_sub_constitutions` flag; it is
   preserved across registry changes.
+
+### Fixed
+
+- Added path traversal validation (`validate_package_path` in
+  `charter-common.sh`) for distributed package paths, applied in
+  `compose-size-check.sh` and `constitution-validate-sections.sh`.
+- Fixed missing executable permissions on the newly added
+  `config-distributed-set.sh` and `distributed-detect.sh` scripts.
+
+## [0.3.1] - 2026-07-03
+
+### Fixed
+
+- Removed the unused `config-template.yml` file and its stale reference in
+  `tests/test_manifest.py`.
+
+## [0.3.0] - 2026-07-03
+
+### Added
+
+- `/speckit.charter.compose` now runs an inline configuration flow when no
+  charter configuration exists yet (`.specify/charter/state.yml` missing).
+  Instead of erroring out, it prompts for the registry value and the fragment
+  selection, displays the composition summary without asking for confirmation,
+  reminds the user that `/speckit.charter.restore` can undo the change, and
+  proceeds automatically to generate the constitution — letting users configure
+  and compose in a single step.
+
+### Changed
+
 - `/speckit.charter.config` no longer asks for a yes/no/cancel confirmation
   after the composition summary. It now only requests the registry value and the
   fragment selection; the summary is shown for information and the configuration
   is saved automatically.
 - `/speckit.charter.config` now reminds the user that `/speckit.charter.restore`
   can restore the previous constitution if the generated one is not valid.
+- Charter commands now delegate to modular helper scripts (`backup-list.sh`,
+  `backup-preview.sh`, `backup-restore.sh`, `constitution-validate-sections.sh`,
+  `fragment-is-mandatory.sh`, `registry-default.sh`, `snapshot-detect-modified.sh`,
+  `snapshot-list-missing.sh`, `state-check.sh`) instead of inline logic.
+
+### Fixed
+
+- The restoration reminder in the inline configuration flow is now shown at the
+  correct step, after composition completes rather than before.
+- Constitution sections are now separated by a trailing blank line, and section
+  extraction trims trailing blank lines to avoid duplicated separators.
+
+## [0.2.0] - 2026-07-02
+
+### Changed
 
 - **BREAKING:** Charter now stores all persistent data under `.specify/charter/`
   instead of `.specify/extensions/charter/`. The extension install directory is
