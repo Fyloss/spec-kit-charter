@@ -425,22 +425,30 @@ Build a complete prompt for `/speckit.constitution` that contains ALL the conten
 
 #### Heading Normalization
 
-Before assembling each section into the final constitution, **normalize its heading levels** so that the top-level heading in every section becomes H2 (`##`). This prevents heading conflicts with the Spec Kit-generated H1 title at the top of the constitution, and ensures consistent heading depth regardless of how the fragment or sub-constitution author chose to indent their headings.
+Before assembling each section into the final constitution, **normalize its heading levels** so that the top-level heading in every section becomes H2 (`##`). This prevents heading conflicts with the Spec Kit-generated H1 title at the top of the constitution, and ensures consistent heading depth regardless of how the fragment author chose to indent their headings.
 
-**Algorithm (apply to each section's content after reading it, before including it in the constitution):**
+**Use the shared script** — pipe each section's raw content through it:
 
-1. Find the minimum heading level in the content: scan all lines that start with one or more `#` followed by a space. Record the minimum number of `#` characters (`min_level`).
-2. If no heading lines are found, leave the content unchanged.
-3. Compute `delta = 2 - min_level`. If `delta = 0`, the top heading is already H2 — no change needed.
-4. For each heading line, add or remove `|delta|` `#` characters at the start:
-   - If `delta > 0`: prepend `delta` `#` chars (e.g., `# Foo` with delta=1 → `## Foo`)
-   - If `delta < 0`: remove `|delta|` `#` chars (e.g., `#### Foo` with delta=-2 → `## Foo`; clamp at minimum 1 `#`)
-5. Non-heading lines are not modified.
+```bash
+NORMALIZED_CONTENT="$(printf '%s' "$RAW_CONTENT" | bash .specify/extensions/charter/scripts/bash/heading-normalize.sh 2)"
+```
+
+The script handles all edge cases correctly, including fence-aware heading detection (see below). Do not reimplement the algorithm inline.
+
+**Key behaviours of `heading-normalize.sh`:**
+
+1. **Fence tracking** — lines inside fenced code blocks (` ``` ` or `~~~`) are **never treated as headings**, even if they start with `#`. This covers shell/Python/YAML comments, shebangs, `#include`, and any other `#`-prefixed syntax inside code samples. Fence state is toggled on each ` ``` ` or `~~~` line.
+
+2. **Minimum-level detection** — the script scans only *outside-fence* lines that start with one or more `#` followed by a space to find `min_level`.
+
+3. **Delta application** — `delta = target - min_level` is applied to every outside-fence heading line. Headings are clamped at a minimum of `#` (H1). Non-heading lines and code-block contents are passed through verbatim.
+
+4. **No-op when no headings** — if the content has no heading lines outside fenced blocks, it is emitted unchanged.
 
 **Important constraints:**
 - Apply normalization only to the content used in the final constitution — **never modify registry files, snapshot files, or the distributed package files**.
-- The prefix line `WHEN WORKING ON …` added before sub-constitution content is not a heading and must not be modified.
-- The normalization is independent per section — each section's headings are shifted relative to its own minimum, not a global minimum.
+- The prefix line `WHEN WORKING ON …` added before sub-constitution content is not a heading and must not be modified — pipe only the fragment/sub-constitution body, then prepend the prefix line to the normalized result.
+- Normalization is independent per section — each section's headings are shifted relative to its own minimum, not a global minimum.
 
 #### Typed Section Comment Format
 
