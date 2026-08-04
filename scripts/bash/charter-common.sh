@@ -91,14 +91,16 @@ is_git_url() {
 # Usage: yaml_field "file.yml" "field_name"
 yaml_field() {
   local file="$1" field="$2"
-  grep -E "^${field}:" "$file" 2>/dev/null | head -1 | sed "s/^${field}:[[:space:]]*//" | sed 's/^"\(.*\)"$/\1/' | sed "s/^'\(.*\)'$/\1/"
+  # "|| true": grep exits 1 on no match, which under pipefail+set -e would abort the caller
+  grep -E "^${field}:" "$file" 2>/dev/null | head -1 | sed "s/^${field}:[[:space:]]*//" | sed 's/^"\(.*\)"$/\1/' | sed "s/^'\(.*\)'$/\1/" || true
 }
 
 # Read a YAML list field — returns one item per line (simple flat lists only)
 # Usage: yaml_list "file.yml" "field_name"
 yaml_list() {
   local file="$1" field="$2"
-  sed -n "/^${field}:/,/^[^ ]/p" "$file" | grep -E '^\s*-\s' | sed 's/^\s*-\s*//' | sed 's/^"\(.*\)"$/\1/' | sed "s/^'\(.*\)'$/\1/"
+  # "|| true": grep exits 1 on no match, which under pipefail+set -e would abort the caller
+  sed -n "/^${field}:/,/^[^ ]/p" "$file" | grep -E '^\s*-\s' | sed 's/^\s*-\s*//' | sed 's/^"\(.*\)"$/\1/' | sed "s/^'\(.*\)'$/\1/" || true
 }
 
 # Get the registry path from config
