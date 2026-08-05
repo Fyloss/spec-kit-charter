@@ -1,3 +1,7 @@
+<p align="center" style="margin-top: 30px">
+  <img src=".github/assets/logo.png" alt="logo"  width="130">
+</p>
+
 # Charter: Constitution Composer for Spec Kit
 
 A [Spec Kit](https://github.com/github/spec-kit) extension that enables modular
