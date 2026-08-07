@@ -60,8 +60,8 @@ Create a fragment registry (local directory or git repo):
 │       └── typescript/
 │           └── standards.md
 └── sub-constitutions/
-    ├── package-auth.md
-    └── package-api.md
+    ├── package_auth.md
+    └── package_api.md
 ```
 
 Create `manifest.yml`:
@@ -154,8 +154,8 @@ without switching commands.
 │       └── python/
 │           └── style.md
 └── sub-constitutions/              # Monorepo package-specific rules
-    ├── package-auth.md
-    └── package-api.md
+    ├── package_auth.md
+    └── package_api.md
 ```
 
 ### Manifest Format
@@ -183,10 +183,10 @@ Each section's top heading is automatically normalized to H2:
 ## Code Quality Standards
 <code quality fragment content>
 
-<!-- [SC] sub-constitutions/packages-auth SECTION -->
+<!-- [SC] sub-constitutions/packages_auth SECTION -->
 WHEN WORKING ON packages/auth, FOLLOW THESE INSTRUCTIONS:
 ## Auth rules
-<packages-auth sub-constitution content>
+<packages_auth sub-constitution content>
 
 <!-- [DSC] packages/back/.charter/constitution SECTION -->
 WHEN WORKING ON packages/back, FOLLOW THESE INSTRUCTIONS:
@@ -218,15 +218,16 @@ Charter offers two complementary mechanisms for monorepos:
 ### 1. Registry sub-constitutions (centralized)
 
 Sub-constitutions in the registry's `sub-constitutions/` directory are scoped to
-a specific package. Name the file using `-` as a path separator (e.g.
-`packages-auth.md`) — Charter derives the `WHEN WORKING ON` path by replacing
-`-` with `/`:
+a specific package. Name the file using `_` as a path separator (e.g.
+`packages_auth.md`) — Charter derives the `WHEN WORKING ON` path by replacing
+`_` with `/`. Use `-` freely within a segment for readability (e.g.
+`packages_auth-gateway.md` → `packages/auth-gateway`):
 
 ```markdown
-<!-- [SC] sub-constitutions/packages-auth SECTION -->
+<!-- [SC] sub-constitutions/packages_auth SECTION -->
 WHEN WORKING ON packages/auth, FOLLOW THESE INSTRUCTIONS:
 ## Auth rules
-<content of packages-auth.md>
+<content of packages_auth.md>
 ```
 
 Use these when you want package rules stored **centrally in the registry** rather
