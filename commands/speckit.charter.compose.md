@@ -189,7 +189,7 @@ bash .specify/extensions/charter/scripts/bash/constitution-strip-local.sh
 
 **ID format rules for state YAML:**
 - Fragment IDs: registry path without `.md` (e.g. `global/compliance`)
-- Registry sub-constitution IDs: `sub-constitutions/<filename_without_md>` (e.g. `sub-constitutions/packages-auth`)
+- Registry sub-constitution IDs: `sub-constitutions/<filename_without_md>` (e.g. `sub-constitutions/packages_auth`)
 - Distributed sub-constitution IDs: `<package_path>/.charter/constitution` (e.g. `packages/auth/.charter/constitution`)
 
 Write the assembled YAML to the state file (content via stdin):
@@ -372,7 +372,7 @@ bash .specify/extensions/charter/scripts/bash/registry-fetch.sh "$(pwd)" >/dev/n
 bash .specify/extensions/charter/scripts/bash/fragment-read.sh "<FRAGMENT_NAME>" "fragment" "$(pwd)"
 
 # Registry sub-constitution: strip "sub-constitutions/" prefix first
-# SC_ID from state: "sub-constitutions/packages-auth" → NAME = "packages-auth"
+# SC_ID from state: "sub-constitutions/packages_auth" → NAME = "packages_auth"
 bash .specify/extensions/charter/scripts/bash/fragment-read.sh "<NAME>" "sub-constitution" "$(pwd)"
 ```
 
@@ -388,7 +388,7 @@ The state stores IDs as `sub-constitutions/<name>`. Strip the `sub-constitutions
 
 ```bash
 bash .specify/extensions/charter/scripts/bash/registry-fetch.sh "$(pwd)" >/dev/null
-# SC_ID from state: "sub-constitutions/packages-auth" → NAME = "packages-auth"
+# SC_ID from state: "sub-constitutions/packages_auth" → NAME = "packages_auth"
 bash .specify/extensions/charter/scripts/bash/fragment-read.sh "<NAME>" "sub-constitution" "$(pwd)"
 ```
 
@@ -457,15 +457,15 @@ Use typed tags in section markers to identify the kind of content:
 | Content type | Tag | Example marker |
 |---|---|---|
 | Fragment | `[F]` | `<!-- [F] global/compliance SECTION -->` |
-| Registry sub-constitution | `[SC]` | `<!-- [SC] sub-constitutions/packages-auth SECTION -->` |
+| Registry sub-constitution | `[SC]` | `<!-- [SC] sub-constitutions/packages_auth SECTION -->` |
 | Distributed sub-constitution | `[DSC]` | `<!-- [DSC] packages/auth/.charter/constitution SECTION -->` |
 | Project-specific (local) | `[PS]` | `<!-- [PS] PROJECT SPECIFIC SECTION -->` |
 
 #### Prefix Line for Sub-constitutions
 
-For **registry sub-constitutions**: derive the working-on path from the state ID by stripping the `sub-constitutions/` prefix and replacing every `-` in the filename stem with `/`.
+For **registry sub-constitutions**: derive the working-on path from the state ID by stripping the `sub-constitutions/` prefix and replacing every `_` in the filename stem with `/`. Use `-` freely within a path segment for readability (e.g. `packages_auth-gateway` → `packages/auth-gateway`).
 
-Example: state ID `sub-constitutions/packages-auth` → prefix line `WHEN WORKING ON packages/auth, FOLLOW THESE INSTRUCTIONS:`
+Example: state ID `sub-constitutions/packages_auth` → prefix line `WHEN WORKING ON packages/auth, FOLLOW THESE INSTRUCTIONS:`
 
 For **distributed sub-constitutions**: derive the working-on path from the state ID by stripping the `/.charter/constitution` suffix.
 
@@ -497,7 +497,7 @@ WHEN WORKING ON <PACKAGE_PATH_1>, FOLLOW THESE INSTRUCTIONS:
 **Rules for the prompt:**
 - Each section starts with its typed HTML comment marker on its own line
 - Fragment section IDs use the registry path (e.g., `global/compliance`, `languages/typescript/standards`)
-- Registry sub-constitution section IDs use `sub-constitutions/<filename_stem>` (e.g., `sub-constitutions/packages-auth`)
+- Registry sub-constitution section IDs use `sub-constitutions/<filename_stem>` (e.g., `sub-constitutions/packages_auth`)
 - Distributed sub-constitution section IDs use `<package_path>/.charter/constitution` (e.g., `packages/auth/.charter/constitution`)
 - The `WHEN WORKING ON …` prefix line appears immediately after the section marker for both registry and distributed sub-constitutions, using the derived working-on path (not the full state ID)
 - The local constitution section uses the `[PS]` tag and `PROJECT SPECIFIC` as ID
@@ -565,8 +565,8 @@ For UPDATE MODE with a single fragment, also confirm:
 - Registry sub-constitutions and distributed sub-constitutions are **cacheless**: their latest content is read on every compose, so a plain `/speckit.charter.compose` refreshes all of them (no `update` needed). Package owners can edit `<package>/.charter/constitution.md` and re-run compose to propagate changes
 - **Heading normalization**: compose automatically shifts each section's top heading to H2, preserving internal relative depth. This never modifies registry files, snapshot files, or distributed package files — only the assembled constitution output is normalized.
 - **Snapshot comparison ignores heading levels**: `snapshot-compare.sh` strips leading `#` characters before diffing, so auto-indent does not trigger false "modified" warnings.
-- **State ID formats**: fragment IDs are their registry path (`global/compliance`); registry sub-constitution IDs include the `sub-constitutions/` prefix (`sub-constitutions/packages-auth`); distributed sub-constitution IDs include the full source path (`packages/auth/.charter/constitution`).
-- **Sub-constitution prefix lines**: for registry sub-constitutions, the working-on path is derived by stripping `sub-constitutions/` and replacing `-` with `/` in the stem. For distributed sub-constitutions, the working-on path is the package root (strip `/.charter/constitution` from the ID).
+- **State ID formats**: fragment IDs are their registry path (`global/compliance`); registry sub-constitution IDs include the `sub-constitutions/` prefix (`sub-constitutions/packages_auth`); distributed sub-constitution IDs include the full source path (`packages/auth/.charter/constitution`).
+- **Sub-constitution prefix lines**: for registry sub-constitutions, the working-on path is derived by stripping `sub-constitutions/` and replacing `_` with `/` in the stem. For distributed sub-constitutions, the working-on path is the package root (strip `/.charter/constitution` from the ID).
 - The local constitution content in the state file is updated each time compose runs in override mode
 - Typed section markers (`<!-- [F] NAME SECTION -->`, `<!-- [SC] NAME SECTION -->`, `<!-- [DSC] NAME SECTION -->`, `<!-- [PS] PROJECT SPECIFIC SECTION -->`) are the backbone of the update mechanism — never remove or alter them manually
 - The `/speckit.constitution` command adds its own metadata (Sync Impact Report, version line) — this is expected and should not be confused with charter sections

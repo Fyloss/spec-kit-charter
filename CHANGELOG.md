@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **BREAKING: Registry sub-constitution filenames now use `_` (underscore) as
+  the path separator instead of `-` (dash).** The `WHEN WORKING ON` path is now
+  derived by replacing `_` with `/` in the filename stem, leaving `-` free for
+  readability within a segment (e.g. `package_auth-gateway.md` →
+  `WHEN WORKING ON package/auth-gateway`). Previously `packages-auth.md` mapped
+  to `packages/auth`; rename existing registry sub-constitution files to use
+  `_` instead of `-` between path segments (e.g. `packages-auth.md` →
+  `packages_auth.md`).
+
 ## [0.5.1] - 2026-08-03
 
 ### Fixed

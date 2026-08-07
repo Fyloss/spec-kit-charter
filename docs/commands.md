@@ -152,7 +152,7 @@ The generated constitution follows this structure:
 ## Fragment 2 heading
 <fragment_2 content>
 
-<!-- [SC] sub-constitutions/packages-auth SECTION -->
+<!-- [SC] sub-constitutions/packages_auth SECTION -->
 WHEN WORKING ON packages/auth, FOLLOW THESE INSTRUCTIONS:
 ## Auth rules heading
 <registry sub-constitution content>
@@ -178,8 +178,8 @@ to H2, preserving the internal relative depth. This never modifies registry or
 snapshot files.
 
 **Sub-constitution prefix lines**: for registry SCs, the working-on path is
-derived by stripping `sub-constitutions/` and replacing `-` with `/` in the stem
-(`packages-auth` → `packages/auth`). For distributed SCs, it is the package
+derived by stripping `sub-constitutions/` and replacing `_` with `/` in the stem
+(`packages_auth` → `packages/auth`). For distributed SCs, it is the package
 root path.
 
 Order: fragments → registry sub-constitutions → distributed sub-constitutions →
@@ -236,6 +236,6 @@ Remove a fragment, registry sub-constitution, or distributed sub-constitution fr
 
 ```
 /speckit.charter.remove languages/typescript/standards
-/speckit.charter.remove package-auth
+/speckit.charter.remove package_auth
 /speckit.charter.remove packages/back
 ```

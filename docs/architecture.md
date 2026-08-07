@@ -41,7 +41,7 @@ HTML comments with a type tag serve as section delimiters in the generated const
 | Type | Tag | Example |
 |---|---|---|
 | Fragment | `[F]` | `<!-- [F] global/compliance SECTION -->` |
-| Registry sub-constitution | `[SC]` | `<!-- [SC] sub-constitutions/packages-auth SECTION -->` |
+| Registry sub-constitution | `[SC]` | `<!-- [SC] sub-constitutions/packages_auth SECTION -->` |
 | Distributed sub-constitution | `[DSC]` | `<!-- [DSC] packages/auth/.charter/constitution SECTION -->` |
 | Project-specific | `[PS]` | `<!-- [PS] PROJECT SPECIFIC SECTION -->` |
 

@@ -25,8 +25,8 @@ a registry.
 │       └── python/
 │           └── style.md
 └── sub-constitutions/              # Optional
-    ├── package-auth.md
-    └── package-api.md
+    ├── package_auth.md
+    └── package_api.md
 ```
 
 ## Manifest
@@ -110,8 +110,8 @@ root (NOT inside `fragments/`):
 ```
 <registry_root>/
 └── sub-constitutions/
-    ├── package-auth.md
-    └── package-api.md
+    ├── package_auth.md
+    └── package_api.md
 ```
 
 ### Content
@@ -122,27 +122,29 @@ constitution.
 
 When composed, Charter automatically adds a scoping prefix line and a typed
 section marker. The `WHEN WORKING ON` path is derived from the filename: replace
-every `-` with `/` in the stem.
+every `_` with `/` in the stem.
 
-Example — file `packages-auth.md` produces:
+Example — file `packages_auth.md` produces:
 
 ```markdown
-<!-- [SC] sub-constitutions/packages-auth SECTION -->
+<!-- [SC] sub-constitutions/packages_auth SECTION -->
 WHEN WORKING ON packages/auth, FOLLOW THESE INSTRUCTIONS:
 ## Auth rules                   ← top heading auto-shifted to H2
-<content of packages-auth.md>
+<content of packages_auth.md>
 ```
 
 This tells the AI agent to apply these rules only when working on `packages/auth`.
 
 ### Naming
 
-Name sub-constitution files using `-` as a path separator (e.g.
-`packages-auth.md`, `packages-back.md`). The filename stem (without `.md`) is
-used to derive the `WHEN WORKING ON` path by replacing `-` with `/`.
+Name sub-constitution files using `_` as a path separator (e.g.
+`packages_auth.md`, `packages_back.md`). The filename stem (without `.md`) is
+used to derive the `WHEN WORKING ON` path by replacing `_` with `/`. Use `-`
+freely within a segment for readability (e.g. `packages_auth-gateway.md` →
+`packages/auth-gateway`).
 
 The section ID in the composed constitution is `sub-constitutions/<stem>` (e.g.
-`sub-constitutions/packages-auth`).
+`sub-constitutions/packages_auth`).
 
 ### Registry vs. distributed sub-constitutions
 
@@ -152,7 +154,7 @@ Charter supports two kinds of sub-constitutions for monorepos:
 |---|---|---|
 | **Location** | `sub-constitutions/<name>.md` in the registry | `<package>/.charter/constitution.md` in the package |
 | **Owner** | Registry maintainers | Package owners (in-tree) |
-| **State ID** | `sub-constitutions/<stem>` (e.g. `sub-constitutions/packages-auth`) | `<pkg>/.charter/constitution` (e.g. `packages/auth/.charter/constitution`) |
+| **State ID** | `sub-constitutions/<stem>` (e.g. `sub-constitutions/packages_auth`) | `<pkg>/.charter/constitution` (e.g. `packages/auth/.charter/constitution`) |
 | **Section marker** | `<!-- [SC] sub-constitutions/<stem> SECTION -->` | `<!-- [DSC] <pkg>/.charter/constitution SECTION -->` |
 | **Prefix line** | `WHEN WORKING ON <stem_with_slashes>, FOLLOW THESE INSTRUCTIONS:` | `WHEN WORKING ON <pkg>, FOLLOW THESE INSTRUCTIONS:` |
 | **Enabled** | Always available | Opt-in flag `distributed_sub_constitutions` |

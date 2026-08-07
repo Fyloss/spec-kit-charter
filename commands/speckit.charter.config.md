@@ -188,8 +188,8 @@ recommended fragments (no separate manifest parsing needed).
 4. |R| domains/ecommerce/checkout
 5. |R| languages/python/style
 [SUB-CONSTITUTIONS]
-6. |R| package-auth
-7. |R| package-api
+6. |R| package_auth
+7. |R| package_api
 8. |L| packages/front (detected)
 9. |L| packages/back (detected)
 [OTHER]
@@ -242,7 +242,7 @@ local_constitution_content: |
 ```
 
 **Rules for the lists:**
-- `sub_constitutions` holds the selected **registry** sub-constitutions as `sub-constitutions/<filename_without_md>` (e.g. `sub-constitutions/packages-auth`). The `sub-constitutions/` prefix is part of the stored ID.
+- `sub_constitutions` holds the selected **registry** sub-constitutions as `sub-constitutions/<filename_without_md>` (e.g. `sub-constitutions/packages_auth`). The `sub-constitutions/` prefix is part of the stored ID.
 - `distributed_sub_constitutions` holds the selected **distributed** sub-constitutions as `<package_path>/.charter/constitution` (e.g. `packages/auth/.charter/constitution`). This encodes the full source path without the `.md` extension.
 - Include `distributed_sub_constitutions` only when the feature is enabled and the user selected one or more; otherwise write it as an empty list (`distributed_sub_constitutions: []`) or omit it.
 
@@ -336,7 +336,7 @@ After saving the state, display:
 
 - The registry can be changed at any time by re-running `/speckit.charter.config`.
 - Fragment names correspond to their file paths within the registry's `fragments/` directory, without the `.md` extension (e.g., `languages/typescript/standards`).
-- Registry sub-constitution IDs are stored as `sub-constitutions/<filename_without_md>` (e.g., `sub-constitutions/packages-auth`). The `sub-constitutions/` prefix is part of the ID and enables typed section markers in the composed constitution.
+- Registry sub-constitution IDs are stored as `sub-constitutions/<filename_without_md>` (e.g., `sub-constitutions/packages_auth`). The `sub-constitutions/` prefix is part of the ID and enables typed section markers in the composed constitution.
 - Distributed sub-constitution IDs are stored as `<package_path>/.charter/constitution` (e.g., `packages/auth/.charter/constitution`). The full source path (minus `.md`) is the ID.
 - Git registries are cloned/fetched into `.specify/charter/.cache/registry/` and use the default branch.
 - Git authentication uses the local system credentials (SSH keys, credential helpers) — no additional authentication is required.

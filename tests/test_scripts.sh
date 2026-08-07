@@ -198,7 +198,7 @@ test_fragment_list() {
     fail "fragment-list: lists regular fragment" "output: $output"
   fi
 
-  if echo "$output" | grep -q "sub-constitution.*package-auth"; then
+  if echo "$output" | grep -q "sub-constitution.*package_auth"; then
     pass "fragment-list: lists sub-constitution"
   else
     fail "fragment-list: lists sub-constitution" "output: $output"
@@ -379,7 +379,7 @@ test_fragment_read() {
 test_fragment_read_sub() {
   setup
   local output
-  output="$(bash "${SCRIPTS_DIR}/fragment-read.sh" "package-auth" "sub-constitution" "${TMP_DIR}/project" 2>&1)"
+  output="$(bash "${SCRIPTS_DIR}/fragment-read.sh" "package_auth" "sub-constitution" "${TMP_DIR}/project" 2>&1)"
   if echo "$output" | grep -q "authentication"; then
     pass "fragment-read: reads sub-constitution content"
   else

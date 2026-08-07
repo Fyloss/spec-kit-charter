@@ -45,7 +45,7 @@ fragment selection:
 [FRAGMENT] |R| global/compliance
 [FRAGMENT] |R| global/code-quality
 [FRAGMENT] |R| languages/typescript/standards
-[SUB-CONSTITUTION] |R| package-auth
+[SUB-CONSTITUTION] |R| package_auth
 [SUB-CONSTITUTION] |L| packages/back
 [OTHER] |L| <CURRENT PROJECT CONSTITUTION>
 ===============================================
@@ -178,20 +178,22 @@ Add sub-constitutions to the registry's `sub-constitutions/` directory:
 ```
 .charter/
 └── sub-constitutions/
-    ├── package-auth.md
-    ├── package-api.md
-    └── package-ui.md
+    ├── package_auth.md
+    ├── package_api.md
+    └── package_ui.md
 ```
 
 Each sub-constitution is wrapped with a scoping prefix in the final constitution.
 The section ID includes the `sub-constitutions/` prefix; the `WHEN WORKING ON`
-path is derived by replacing `-` with `/` in the filename stem:
+path is derived by replacing `_` with `/` in the filename stem (use `-` freely
+within a segment for readability, e.g. `packages_auth-gateway.md` →
+`packages/auth-gateway`):
 
 ```markdown
-<!-- [SC] sub-constitutions/packages-auth SECTION -->
+<!-- [SC] sub-constitutions/packages_auth SECTION -->
 WHEN WORKING ON packages/auth, FOLLOW THESE INSTRUCTIONS:
 ## Auth rules                   ← top heading auto-shifted to H2
-<content of packages-auth.md>
+<content of packages_auth.md>
 ```
 
 Use this when you prefer to keep package rules **centrally in the registry**.
