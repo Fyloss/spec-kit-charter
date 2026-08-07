@@ -100,7 +100,11 @@ yaml_field() {
 yaml_list() {
   local file="$1" field="$2"
   # "|| true": grep exits 1 on no match, which under pipefail+set -e would abort the caller
-  sed -n "/^${field}:/,/^[^ ]/p" "$file" | grep -E '^\s*-\s' | sed 's/^\s*-\s*//' | sed 's/^"\(.*\)"$/\1/' | sed "s/^'\(.*\)'$/\1/" || true
+  # POSIX character classes rather than "\s": BSD/macOS sed does not support
+  # "\s", so the list-syntax strip silently no-ops there and every entry is
+  # returned as `  - "name"` instead of `name`. This matches yaml_field above,
+  # which already uses [[:space:]].
+  sed -n "/^${field}:/,/^[^ ]/p" "$file" | grep -E '^[[:space:]]*-[[:space:]]' | sed 's/^[[:space:]]*-[[:space:]]*//' | sed 's/^"\(.*\)"$/\1/' | sed "s/^'\(.*\)'$/\1/" || true
 }
 
 # Get the registry path from config
