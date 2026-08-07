@@ -20,7 +20,10 @@ if [[ ! -d "$CHARTER_BACKUPS_DIR" ]]; then
   exit 1
 fi
 
-mapfile -t backups < <(find "$CHARTER_BACKUPS_DIR" -name '*.md.backup' -type f | sort -r)
+backups=()
+while IFS= read -r line; do
+  backups+=("$line")
+done < <(find "$CHARTER_BACKUPS_DIR" -name '*.md.backup' -type f | sort -r)
 
 if [[ ${#backups[@]} -eq 0 ]]; then
   echo "TOTAL_BACKUPS=0"

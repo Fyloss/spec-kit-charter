@@ -20,19 +20,18 @@ MANIFEST="${REGISTRY_LOCAL_PATH}/manifest.yml"
 FRAGMENTS_DIR="${REGISTRY_LOCAL_PATH}/fragments"
 SUB_CONST_DIR="${REGISTRY_LOCAL_PATH}/sub-constitutions"
 
-# Read mandatory and recommended lists from manifest
-declare -A MANDATORY_MAP
-declare -A RECOMMENDED_MAP
+# Read mandatory and recommended lists from manifest (newline-delimited, no
+# associative arrays — macOS ships bash 3.2 which lacks `declare -A`)
+MANDATORY_LIST="$(yaml_list "$MANIFEST" "mandatory_fragments")"
+RECOMMENDED_LIST="$(yaml_list "$MANIFEST" "recommended_fragments")"
 
-while IFS= read -r frag; do
-  [[ -z "$frag" ]] && continue
-  MANDATORY_MAP["$frag"]=1
-done < <(yaml_list "$MANIFEST" "mandatory_fragments")
-
-while IFS= read -r frag; do
-  [[ -z "$frag" ]] && continue
-  RECOMMENDED_MAP["$frag"]=1
-done < <(yaml_list "$MANIFEST" "recommended_fragments")
+is_in_list() {
+  local needle="$1" list="$2" line
+  while IFS= read -r line; do
+    [[ "$line" == "$needle" ]] && return 0
+  done <<< "$list"
+  return 1
+}
 
 # List fragments recursively
 if [[ -d "$FRAGMENTS_DIR" ]]; then
@@ -45,9 +44,9 @@ if [[ -d "$FRAGMENTS_DIR" ]]; then
     category="$(dirname "$rel_path")"
     [[ "$category" == "." ]] && category=""
 
-    if [[ -n "${MANDATORY_MAP[$name]+x}" ]]; then
+    if is_in_list "$name" "$MANDATORY_LIST"; then
       echo -e "mandatory_fragment\t${category}\t${rel_path}\t${name}"
-    elif [[ -n "${RECOMMENDED_MAP[$name]+x}" ]]; then
+    elif is_in_list "$name" "$RECOMMENDED_LIST"; then
       echo -e "recommended_fragment\t${category}\t${rel_path}\t${name}"
     else
       echo -e "fragment\t${category}\t${rel_path}\t${name}"
