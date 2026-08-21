@@ -1133,7 +1133,7 @@ EOF
 
   local rc=0 output=""
   output="$(bash "${SCRIPTS_DIR}/compose-size-check.sh" "${TMP_DIR}/project" 2>&1)" || rc=$?
-  if [[ "$rc" -eq 0 ]] && echo "$output" | grep -q "^TOTAL_BYTES=[0-9]\+$"; then
+  if [[ "$rc" -eq 0 ]] && echo "$output" | grep -q "^TOTAL_BYTES=[0-9][0-9]*$"; then
     pass "compose-size-check: reports TOTAL_BYTES with empty lists in state"
   else
     fail "compose-size-check: reports TOTAL_BYTES with empty lists in state" "exit code: $rc, output: $output"
