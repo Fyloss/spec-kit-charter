@@ -19,3 +19,7 @@ Thumbs.db
 # Test artifacts
 tests/tmp/
 .pytest_cache/
+
+#Headroom
+.claude/.headroom_wrap_marker.json
+.tokensave

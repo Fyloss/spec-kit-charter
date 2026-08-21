@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-08-21
+
+### Added
+
+- GitHub Actions workflow running the manifest tests and the shell test suite on
+  macOS 15, macOS latest, Ubuntu, and Windows for every push and pull request.
+- Regression tests for the YAML helpers on empty lists and missing fields, and
+  an end-to-end `compose-size-check.sh` test with an empty `state.yml` list.
+- Project logo in README.md.
+
 ### Changed
 
 - **BREAKING: Registry sub-constitution filenames now use `_` (underscore) as
@@ -17,6 +27,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to `packages/auth`; rename existing registry sub-constitution files to use
   `_` instead of `-` between path segments (e.g. `packages-auth.md` →
   `packages_auth.md`).
+- `fragment-list.sh` no longer uses associative arrays (`declare -A`) and
+  `backup-list.sh` no longer uses `mapfile`. Both require bash 4+, while macOS
+  ships bash 3.2, so those scripts failed outright on a stock macOS shell.
+
+### Fixed
+
+- `yaml_field` and `yaml_list` aborted the calling script under
+  `set -euo pipefail` whenever their `grep` stage matched nothing. Any state
+  file holding an empty list (`sub_constitutions: []`,
+  `distributed_sub_constitutions: []`) or a missing field killed the caller
+  inside a command substitution — `compose-size-check.sh` exited 1 without
+  printing `TOTAL_BYTES=` / `EXCEEDS_32K=`, leaving the config and compose
+  commands with no diagnostics. Both helpers now yield an empty result instead.
+- `yaml_list` stripped YAML list syntax with `\s`, which BSD/macOS `sed` does
+  not support: every entry came back as `  - "name"` instead of `name`, so no
+  fragment ever matched the manifest's `mandatory_fragments` /
+  `recommended_fragments` and pre-selection was silently lost on macOS. It now
+  uses POSIX character classes, matching `yaml_field`.
+- CI workflow triggers referenced the `main` branch, which does not exist in
+  this repository; they now reference `master`.
 
 ## [0.5.1] - 2026-08-03
 

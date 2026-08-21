@@ -137,9 +137,51 @@ test_yaml_list() {
   fi
 }
 
+# Regression: under `set -euo pipefail` the grep stage of yaml_field/yaml_list
+# exits 1 when nothing matches, which aborts the caller inside a command
+# substitution. Empty flat lists ("[]") and missing fields must yield an empty
+# result, not a failure.
+test_yaml_helpers_empty_matches() {
+  source "${SCRIPTS_DIR}/charter-common.sh"
+  setup
+  local state="${TMP_DIR}/project/.specify/charter/state.yml"
+  cat > "$state" <<'EOF'
+fragments:
+  - "global/compliance"
+sub_constitutions: []
+distributed_sub_constitutions: []
+EOF
+
+  local rc=0 result=""
+  result="$(yaml_list "$state" "sub_constitutions")" || rc=$?
+  if [[ "$rc" -eq 0 && -z "$result" ]]; then
+    pass "yaml_list: empty list yields empty output without aborting"
+  else
+    fail "yaml_list: empty list yields empty output without aborting" "exit code: $rc, got: $result"
+  fi
+
+  rc=0
+  result="$(yaml_field "$state" "local_constitution")" || rc=$?
+  if [[ "$rc" -eq 0 && -z "$result" ]]; then
+    pass "yaml_field: missing field yields empty output without aborting"
+  else
+    fail "yaml_field: missing field yields empty output without aborting" "exit code: $rc, got: $result"
+  fi
+
+  # Non-empty lists must still be read correctly
+  rc=0
+  result="$(yaml_list "$state" "fragments")" || rc=$?
+  if [[ "$rc" -eq 0 && "$result" == "global/compliance" ]]; then
+    pass "yaml_list: non-empty list still reads correctly"
+  else
+    fail "yaml_list: non-empty list still reads correctly" "exit code: $rc, got: $result"
+  fi
+}
+
 test_is_git_url
 test_yaml_field
 test_yaml_list
+test_yaml_helpers_empty_matches
 
 # ── Registry Validation ────────────────────────────────────────────────────
 
@@ -1072,6 +1114,39 @@ EOF
 }
 
 test_snapshot_compare_fence_aware
+
+# ── Size Check ────────────────────────────────────────────────────────────
+
+section "compose-size-check.sh"
+
+# Regression: a state.yml carrying empty flat lists made the script abort with
+# exit 1 and no output, because yaml_list's grep found nothing under pipefail.
+test_compose_size_check_empty_lists() {
+  setup
+  cat > "${TMP_DIR}/project/.specify/charter/state.yml" <<'EOF'
+fragments:
+  - "global/compliance"
+sub_constitutions: []
+distributed_sub_constitutions: []
+local_constitution: false
+EOF
+
+  local rc=0 output=""
+  output="$(bash "${SCRIPTS_DIR}/compose-size-check.sh" "${TMP_DIR}/project" 2>&1)" || rc=$?
+  if [[ "$rc" -eq 0 ]] && echo "$output" | grep -q "^TOTAL_BYTES=[0-9][0-9]*$"; then
+    pass "compose-size-check: reports TOTAL_BYTES with empty lists in state"
+  else
+    fail "compose-size-check: reports TOTAL_BYTES with empty lists in state" "exit code: $rc, output: $output"
+  fi
+
+  if echo "$output" | grep -q "^EXCEEDS_32K=false$"; then
+    pass "compose-size-check: reports EXCEEDS_32K with empty lists in state"
+  else
+    fail "compose-size-check: reports EXCEEDS_32K with empty lists in state" "output: $output"
+  fi
+}
+
+test_compose_size_check_empty_lists
 
 # ── Summary ───────────────────────────────────────────────────────────────
 
